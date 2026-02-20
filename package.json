@@ -1,0 +1,25 @@
+{
+  "name": "motocargazo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MotoCargo MVP monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:mobile": "npm run dev --workspace @motocargazo/mobile",
+    "dev:admin": "npm run dev --workspace @motocargazo/admin",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:db:reset": "supabase db reset",
+    "seed:demo-users": "node scripts/seed-demo-users.mjs"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
