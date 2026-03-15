@@ -1,17 +1,13 @@
 import { router } from "expo-router";
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { PrimaryButton } from "../../components/PrimaryButton";
+import { AppImage } from "../../components/AppImage";
+import { categoryCover, sevilleMap } from "../../lib/demoMedia";
 import { useCartStore } from "../../store/cart-store";
 import { colors, fonts, radius, spacing } from "../../lib/theme";
-
-const fallbackImage =
-  "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=80";
-
-const mapImage =
-  "https://images.unsplash.com/photo-1550332781-aecd27f7436f?auto=format&fit=crop&w=900&q=80";
 
 export default function CartScreen() {
   const items = useCartStore((state) => state.items);
@@ -34,7 +30,7 @@ export default function CartScreen() {
           <View style={styles.headerWrap}>
             <View style={styles.navRow}>
               <Pressable onPress={() => router.back()} style={styles.iconButton}>
-                <Ionicons name="chevron-back" size={20} color={colors.textStrong} />
+                <MaterialCommunityIcons name="chevron-left" size={20} color={colors.textStrong} />
               </Pressable>
               <Text style={styles.title}>Tu pedido</Text>
               <View style={styles.iconButtonPlaceholder} />
@@ -45,7 +41,12 @@ export default function CartScreen() {
         ListEmptyComponent={<EmptyState light title="Tu carrito está vacío" subtitle="Añade productos para continuar al checkout." />}
         renderItem={({ item }) => (
           <View style={styles.itemRow}>
-            <Image source={{ uri: item.imageUrl ?? fallbackImage }} style={styles.itemImage} />
+            <AppImage
+              source={item.imageSource ?? item.imageUrl}
+              fallbackSource={categoryCover[item.category]}
+              style={styles.itemImage}
+              borderRadius={14}
+            />
             <View style={styles.itemMeta}>
               <Text style={styles.itemName} numberOfLines={1}>
                 {item.name}
@@ -56,11 +57,11 @@ export default function CartScreen() {
 
             <View style={styles.itemActions}>
               <Pressable style={styles.stepperBtn} onPress={() => setItemQuantity(item.productId, item.quantity - 1)}>
-                <Ionicons name="remove" size={16} color={colors.brandDark} />
+                <MaterialCommunityIcons name="minus" size={16} color={colors.brandDark} />
               </Pressable>
               <Text style={styles.qty}>{item.quantity}</Text>
               <Pressable style={styles.stepperBtn} onPress={() => setItemQuantity(item.productId, item.quantity + 1)}>
-                <Ionicons name="add" size={16} color={colors.brandDark} />
+                <MaterialCommunityIcons name="plus" size={16} color={colors.brandDark} />
               </Pressable>
               <Pressable onPress={() => removeItem(item.productId)}>
                 <Text style={styles.remove}>Quitar</Text>
@@ -73,13 +74,13 @@ export default function CartScreen() {
             <View style={styles.footerStack}>
               <View style={styles.detailCard}>
                 <Text style={styles.detailTitle}>Detalles de la entrega</Text>
-                <Image source={{ uri: mapImage }} style={styles.mapImage} />
+                <AppImage source={sevilleMap} fallbackSource={categoryCover.produce} style={styles.mapImage} borderRadius={radius.md} />
                 <View style={styles.detailRow}>
-                  <Ionicons name="flag-outline" size={15} color={colors.textStrong} />
+                  <MaterialCommunityIcons name="flag-variant-outline" size={15} color={colors.textStrong} />
                   <Text style={styles.detailText}>Casco Antiguo, Sevilla · Ventana hoy 06:00-08:00</Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Ionicons name="bicycle-outline" size={15} color={colors.textStrong} />
+                  <MaterialCommunityIcons name="bike" size={15} color={colors.textStrong} />
                   <Text style={styles.detailText}>Reparto con vehículo eléctrico compatible</Text>
                 </View>
               </View>
@@ -199,8 +200,8 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#9cdcb0",
-    backgroundColor: "#e8f8ed",
+    borderColor: colors.actionPrimaryBorder,
+    backgroundColor: colors.actionPrimaryHighlight,
     alignItems: "center",
     justifyContent: "center"
   },

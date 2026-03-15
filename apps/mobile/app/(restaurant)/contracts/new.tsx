@@ -1,15 +1,17 @@
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Controller, useForm } from "react-hook-form";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AppScreen } from "../../../components/AppScreen";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { TextInputField } from "../../../components/TextInputField";
 import { createContractDraft, fetchProducersByCategory } from "../../../lib/api";
+import { isDemoApp } from "../../../lib/app-mode";
 import { useSession } from "../../../lib/session";
-import { colors, radius } from "../../../lib/theme";
+import { colors, elevation, fonts, radius } from "../../../lib/theme";
 
 const schema = z.object({
   producerOrganizationId: z.string().uuid("Selecciona un proveedor"),
@@ -21,6 +23,10 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function NewContractScreen() {
+  if (isDemoApp) {
+    return <Redirect href="/(restaurant)" />;
+  }
+
   const { roleSession } = useSession();
   const { data: producers } = useQuery({
     queryKey: ["contract-producers"],
@@ -59,12 +65,12 @@ export default function NewContractScreen() {
   });
 
   return (
-    <AppScreen>
+    <AppScreen dark={false} backgroundColor={colors.bgLight}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.back}>←</Text>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <MaterialCommunityIcons name="chevron-left" size={18} color={colors.textStrong} />
         </Pressable>
-        <Text style={styles.title}>Nuevo Contrato</Text>
+        <Text style={styles.title}>Nuevo contrato</Text>
       </View>
 
       <Text style={styles.subtitle}>Define condiciones base para activar la compra automatizada.</Text>
@@ -78,7 +84,7 @@ export default function NewContractScreen() {
             style={[styles.producerOption, selectedProducerId === producer.id && styles.producerOptionActive]}
           >
             <Text style={styles.producerTitle}>{producer.name}</Text>
-            <Text style={styles.producerMeta}>{`⭐ ${producer.rating.toFixed(1)} · ${producer.deliveryFeeEur.toFixed(2)}€ envío`}</Text>
+            <Text style={styles.producerMeta}>{`Rating ${producer.rating.toFixed(1)} · ${producer.deliveryFeeEur.toFixed(2)}€ envío`}</Text>
           </Pressable>
         ))}
         {errors.producerOrganizationId ? <Text style={styles.error}>{errors.producerOrganizationId.message}</Text> : null}
@@ -88,7 +94,14 @@ export default function NewContractScreen() {
         control={control}
         name="minimumOrderValueEur"
         render={({ field: { value, onChange } }) => (
-          <TextInputField label="Pedido mínimo (€)" value={String(value)} onChangeText={onChange} keyboardType="numeric" error={errors.minimumOrderValueEur?.message} />
+          <TextInputField
+            light
+            label="Pedido mínimo (€)"
+            value={String(value)}
+            onChangeText={onChange}
+            keyboardType="numeric"
+            error={errors.minimumOrderValueEur?.message}
+          />
         )}
       />
 
@@ -96,7 +109,14 @@ export default function NewContractScreen() {
         control={control}
         name="leadTimeHours"
         render={({ field: { value, onChange } }) => (
-          <TextInputField label="Lead time (horas)" value={String(value)} onChangeText={onChange} keyboardType="numeric" error={errors.leadTimeHours?.message} />
+          <TextInputField
+            light
+            label="Lead time (horas)"
+            value={String(value)}
+            onChangeText={onChange}
+            keyboardType="numeric"
+            error={errors.leadTimeHours?.message}
+          />
         )}
       />
 
@@ -104,7 +124,14 @@ export default function NewContractScreen() {
         control={control}
         name="cutOffTimeLocal"
         render={({ field: { value, onChange } }) => (
-          <TextInputField label="Hora de corte" value={value} onChangeText={onChange} placeholder="17:00" error={errors.cutOffTimeLocal?.message} />
+          <TextInputField
+            light
+            label="Hora de corte"
+            value={value}
+            onChangeText={onChange}
+            placeholder="17:00"
+            error={errors.cutOffTimeLocal?.message}
+          />
         )}
       />
 
@@ -144,23 +171,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10
   },
-  back: {
-    color: colors.brand,
-    fontSize: 26,
-    fontWeight: "700"
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    alignItems: "center",
+    justifyContent: "center"
   },
   title: {
-    color: colors.textPrimary,
+    color: colors.textStrong,
     fontSize: 30,
-    fontWeight: "800"
+    lineHeight: 36,
+    fontFamily: fonts.heading
   },
   subtitle: {
-    color: colors.textSecondary,
-    fontSize: 14
+    color: colors.textSoftDark,
+    fontSize: 14,
+    fontFamily: fonts.body
   },
   sectionLabel: {
-    color: colors.textPrimary,
-    fontWeight: "700"
+    color: colors.textStrong,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    fontSize: 12,
+    fontFamily: fonts.bodyStrong
   },
   producerList: {
     gap: 8
@@ -168,26 +205,29 @@ const styles = StyleSheet.create({
   producerOption: {
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: 10,
-    backgroundColor: colors.bgDarkSoft,
-    gap: 2
+    borderColor: colors.lightBorder,
+    padding: 12,
+    backgroundColor: colors.lightSurface,
+    gap: 2,
+    ...elevation.level1
   },
   producerOptionActive: {
-    borderColor: colors.brand,
-    backgroundColor: "rgba(77,174,87,0.15)"
+    borderColor: colors.brandDark,
+    backgroundColor: colors.brandSoft
   },
   producerTitle: {
-    color: colors.textPrimary,
+    color: colors.textStrong,
     fontSize: 16,
-    fontWeight: "700"
+    fontFamily: fonts.bodyStrong
   },
   producerMeta: {
-    color: colors.textSecondary,
-    fontSize: 12
+    color: colors.textSoftDark,
+    fontSize: 12,
+    fontFamily: fonts.body
   },
   error: {
     color: colors.danger,
-    fontSize: 12
+    fontSize: 12,
+    fontFamily: fonts.body
   }
 });

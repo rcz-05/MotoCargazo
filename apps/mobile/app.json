@@ -7,12 +7,16 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": ["**/*"],
+    "splash": {
+      "backgroundColor": "#F8F3E8",
+      "resizeMode": "contain"
+    },
     "ios": {
       "supportsTablet": false
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#4dae57"
+        "backgroundColor": "#D9B58A"
       }
     },
     "plugins": ["expo-router"]

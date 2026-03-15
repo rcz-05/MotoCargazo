@@ -2,8 +2,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { PropsWithChildren, createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { UserRole } from "@motocargazo/types";
-import { supabase } from "./supabase";
 import { demoProviders } from "./demoCatalog";
+import { isDemoApp } from "./app-mode";
+import { supabase } from "./supabase";
 
 type RoleSession = {
   role: UserRole | null;
@@ -24,6 +25,13 @@ type SessionContextValue = {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 const DEMO_SESSION_KEY = "motocargo:demo-role";
+const defaultDemoRole: "restaurant" = "restaurant";
+const emptyRoleSession: RoleSession = {
+  role: null,
+  organizationId: null,
+  organizationName: null,
+  city: null
+};
 const demoProducer = demoProviders.find((provider) => provider.categories.includes("meat")) ?? demoProviders[0];
 
 function buildDemoRoleSession(role: "restaurant" | "producer"): RoleSession {
@@ -52,12 +60,7 @@ async function loadRoleSession(userId: string): Promise<RoleSession> {
     .order("is_primary", { ascending: false });
 
   if (error || !data || data.length === 0) {
-    return {
-      role: null,
-      organizationId: null,
-      organizationName: null,
-      city: null
-    };
+    return emptyRoleSession;
   }
 
   const chosenMembership = data[0];
@@ -78,29 +81,21 @@ async function loadRoleSession(userId: string): Promise<RoleSession> {
 
 export function SessionProvider({ children }: PropsWithChildren) {
   const [session, setSession] = useState<Session | null>(null);
-  const [demoRole, setDemoRole] = useState<"restaurant" | "producer" | null>(null);
-  const [roleSession, setRoleSession] = useState<RoleSession>({
-    role: null,
-    organizationId: null,
-    organizationName: null,
-    city: null
-  });
-  const [loading, setLoading] = useState(true);
-  const demoRoleRef = useRef<"restaurant" | "producer" | null>(null);
+  const [demoRole, setDemoRole] = useState<"restaurant" | "producer" | null>(isDemoApp ? defaultDemoRole : null);
+  const [roleSession, setRoleSession] = useState<RoleSession>(isDemoApp ? buildDemoRoleSession(defaultDemoRole) : emptyRoleSession);
+  const [loading, setLoading] = useState(!isDemoApp);
+  const demoRoleRef = useRef<"restaurant" | "producer" | null>(isDemoApp ? defaultDemoRole : null);
 
   const refreshRoleSession = async () => {
+    if (isDemoApp) {
+      setSession(null);
+      setRoleSession(buildDemoRoleSession(defaultDemoRole));
+      return;
+    }
+
     if (!session?.user?.id) {
       const persistedDemoRole = demoRoleRef.current;
-      if (persistedDemoRole) {
-        setRoleSession(buildDemoRoleSession(persistedDemoRole));
-      } else {
-        setRoleSession({
-          role: null,
-          organizationId: null,
-          organizationName: null,
-          city: null
-        });
-      }
+      setRoleSession(persistedDemoRole ? buildDemoRoleSession(persistedDemoRole) : emptyRoleSession);
       return;
     }
 
@@ -109,6 +104,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
   };
 
   useEffect(() => {
+    if (isDemoApp) {
+      demoRoleRef.current = defaultDemoRole;
+      setDemoRole(defaultDemoRole);
+      setSession(null);
+      setRoleSession(buildDemoRoleSession(defaultDemoRole));
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
 
     const bootstrapSession = async () => {
@@ -131,6 +135,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
           if (mounted) setRoleSession(rs);
         } else if (normalizedDemoRole) {
           setRoleSession(buildDemoRoleSession(normalizedDemoRole));
+        } else {
+          setRoleSession(emptyRoleSession);
         }
       } catch {
         const persistedDemoRole = await AsyncStorage.getItem(DEMO_SESSION_KEY);
@@ -141,7 +147,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
           demoRoleRef.current = normalizedDemoRole;
           setDemoRole(normalizedDemoRole);
           setSession(null);
-          setRoleSession(normalizedDemoRole ? buildDemoRoleSession(normalizedDemoRole) : { role: null, organizationId: null, organizationName: null, city: null });
+          setRoleSession(normalizedDemoRole ? buildDemoRoleSession(normalizedDemoRole) : emptyRoleSession);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -163,12 +169,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       } else if (demoRoleRef.current) {
         setRoleSession(buildDemoRoleSession(demoRoleRef.current));
       } else {
-        setRoleSession({
-          role: null,
-          organizationId: null,
-          organizationName: null,
-          city: null
-        });
+        setRoleSession(emptyRoleSession);
       }
     });
 
@@ -182,10 +183,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
     () => ({
       session,
       roleSession,
-      isDemoSession: Boolean(demoRole) && !session?.user?.id,
+      isDemoSession: isDemoApp || (Boolean(demoRole) && !session?.user?.id),
       loading,
       refreshRoleSession,
       enterDemoSession: async (role) => {
+        if (isDemoApp) {
+          demoRoleRef.current = defaultDemoRole;
+          setDemoRole(defaultDemoRole);
+          setRoleSession(buildDemoRoleSession(defaultDemoRole));
+          setSession(null);
+          setLoading(false);
+          return;
+        }
+
         demoRoleRef.current = role;
         setDemoRole(role);
         setRoleSession(buildDemoRoleSession(role));
@@ -194,15 +204,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
         await AsyncStorage.setItem(DEMO_SESSION_KEY, role);
       },
       signOut: async () => {
+        if (isDemoApp) {
+          demoRoleRef.current = defaultDemoRole;
+          setDemoRole(defaultDemoRole);
+          setSession(null);
+          setRoleSession(buildDemoRoleSession(defaultDemoRole));
+          setLoading(false);
+          return;
+        }
+
         demoRoleRef.current = null;
         setDemoRole(null);
         await AsyncStorage.removeItem(DEMO_SESSION_KEY);
-        setRoleSession({
-          role: null,
-          organizationId: null,
-          organizationName: null,
-          city: null
-        });
+        setRoleSession(emptyRoleSession);
         await supabase.auth.signOut();
       }
     }),

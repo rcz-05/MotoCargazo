@@ -1,47 +1,56 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getDemoProviderImage } from "./demoCatalog";
+import type { AppImageSource } from "./imageSources";
+import { DemoCategoryCode, categoryCover, categoryDefault } from "./demoMedia";
+
+export type CategoryIconDescriptor = {
+  name: keyof typeof MaterialCommunityIcons.glyphMap;
+};
 
 type CategoryVisual = {
   label: string;
-  icon: string;
-  coverImage: string;
+  icon: CategoryIconDescriptor;
+  coverImage: AppImageSource;
   accentColor: string;
 };
 
-export const categoryVisuals: Record<"meat" | "seafood" | "produce", CategoryVisual> = {
+export const categoryVisuals: Record<DemoCategoryCode, CategoryVisual> = {
   meat: {
     label: "Carnicerías",
-    icon: "🍖",
-    coverImage:
-      "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=1200&q=80",
-    accentColor: "#ef6f68"
+    icon: {
+      name: "food-steak"
+    },
+    coverImage: categoryCover.meat,
+    accentColor: "#C46E5B"
   },
   seafood: {
     label: "Pescaderías",
-    icon: "🦐",
-    coverImage:
-      "https://images.unsplash.com/photo-1544943910-4c1dc44aab44?auto=format&fit=crop&w=1200&q=80",
-    accentColor: "#5fc8f8"
+    icon: {
+      name: "fish"
+    },
+    coverImage: categoryCover.seafood,
+    accentColor: "#4F8A9D"
   },
   produce: {
     label: "Vegetales y Frutas",
-    icon: "🥬",
-    coverImage:
-      "https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=80",
-    accentColor: "#8bd36f"
+    icon: {
+      name: "carrot"
+    },
+    coverImage: categoryCover.produce,
+    accentColor: "#6C8D55"
   }
 };
 
-export function producerHeroImage(producerId: string, fallbackCategory?: "meat" | "seafood" | "produce") {
+export function producerHeroImage(producerId: string, fallbackCategory: DemoCategoryCode = "produce") {
   const demoImage = getDemoProviderImage(producerId, "hero");
   if (demoImage) return demoImage;
-  if (fallbackCategory) return categoryVisuals[fallbackCategory].coverImage;
-  return "https://images.unsplash.com/photo-1555992336-03a23c7b20ee?auto=format&fit=crop&w=1200&q=80";
+  return categoryDefault[fallbackCategory];
 }
 
-export function producerCardImage(producerId: string, fallbackCategory?: "meat" | "seafood" | "produce") {
+export function producerCardImage(producerId: string, fallbackCategory: DemoCategoryCode = "produce") {
   const demoImage = getDemoProviderImage(producerId, "card");
   if (demoImage) return demoImage;
-  return producerHeroImage(producerId, fallbackCategory);
+  return categoryCover[fallbackCategory];
 }
 
 export function orderStatusLabel(status: string) {

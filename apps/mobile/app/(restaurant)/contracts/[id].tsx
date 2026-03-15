@@ -1,13 +1,19 @@
-import { useLocalSearchParams, router } from "expo-router";
+import { Redirect, useLocalSearchParams, router } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../../components/AppScreen";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { acceptContract, requestContractRevision } from "../../../lib/api";
+import { isDemoApp } from "../../../lib/app-mode";
 import { supabase } from "../../../lib/supabase";
-import { colors, radius } from "../../../lib/theme";
+import { colors, elevation, fonts, radius } from "../../../lib/theme";
 
 export default function ContractDetailScreen() {
+  if (isDemoApp) {
+    return <Redirect href="/(restaurant)" />;
+  }
+
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const contractQuery = useQuery({
@@ -50,12 +56,12 @@ export default function ContractDetailScreen() {
   const latestVersion = contractQuery.data?.versions[0];
 
   return (
-    <AppScreen>
+    <AppScreen dark={false} backgroundColor={colors.bgLight}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.back}>←</Text>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <MaterialCommunityIcons name="chevron-left" size={18} color={colors.textStrong} />
         </Pressable>
-        <Text style={styles.title}>Contrato</Text>
+        <Text style={styles.title}>Detalle de contrato</Text>
       </View>
 
       {contract ? (
@@ -77,7 +83,7 @@ export default function ContractDetailScreen() {
       ) : null}
 
       <PrimaryButton
-        title={revisionMutation.isPending ? "Solicitando..." : "Solicitar una revisión"}
+        title={revisionMutation.isPending ? "Solicitando..." : "Solicitar revisión"}
         onPress={() => {
           if (!id) return;
           revisionMutation.mutate({
@@ -95,7 +101,7 @@ export default function ContractDetailScreen() {
       />
 
       <PrimaryButton
-        dark
+        variant="secondary"
         title={acceptMutation.isPending ? "Aceptando..." : "Aceptar contrato"}
         onPress={() => {
           if (!id || !contract) return;
@@ -116,40 +122,48 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10
   },
-  back: {
-    color: colors.brand,
-    fontSize: 26,
-    fontWeight: "700"
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    alignItems: "center",
+    justifyContent: "center"
   },
   title: {
-    color: colors.textPrimary,
+    color: colors.textStrong,
     fontSize: 30,
-    fontWeight: "800"
+    lineHeight: 35,
+    fontFamily: fonts.heading
   },
   card: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.bgDarkSoft,
-    padding: 10,
-    gap: 6
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    padding: 12,
+    gap: 6,
+    ...elevation.level1
   },
   status: {
-    color: colors.textPrimary,
+    color: colors.textStrong,
     fontSize: 16,
-    fontWeight: "700"
+    fontFamily: fonts.bodyStrong
   },
   sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "700"
+    color: colors.textStrong,
+    fontSize: 16,
+    fontFamily: fonts.bodyStrong
   },
   meta: {
-    color: colors.textSecondary,
-    fontSize: 13
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
   },
   mono: {
-    color: colors.textPrimary,
+    color: colors.textStrong,
     fontSize: 12,
     fontFamily: "Courier"
   }

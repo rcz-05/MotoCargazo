@@ -2,9 +2,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 import { NativeModules } from "react-native";
+import { isDemoApp } from "./app-mode";
 
 const configuredUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const fallbackSupabaseUrl = "https://motocargo-demo.invalid";
+const fallbackAnonKey = "motocargo-demo-anon-key";
 
 function isLocalHost(hostname: string) {
   return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1";
@@ -58,9 +61,10 @@ function resolveSupabaseUrl(rawUrl: string | undefined): string {
   }
 }
 
-export const runtimeSupabaseUrl = resolveSupabaseUrl(configuredUrl);
+export const runtimeSupabaseUrl = resolveSupabaseUrl(configuredUrl) || fallbackSupabaseUrl;
+const resolvedAnonKey = anonKey || fallbackAnonKey;
 
-if (!runtimeSupabaseUrl || !anonKey) {
+if (!isDemoApp && (!configuredUrl || !anonKey)) {
   console.warn("Supabase env vars are missing. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY.");
 }
 
@@ -68,7 +72,7 @@ if (__DEV__ && configuredUrl && runtimeSupabaseUrl !== configuredUrl) {
   console.info(`Supabase URL rewritten for device access: ${configuredUrl} -> ${runtimeSupabaseUrl}`);
 }
 
-export const supabase = createClient(runtimeSupabaseUrl ?? "", anonKey ?? "", {
+export const supabase = createClient(runtimeSupabaseUrl, resolvedAnonKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

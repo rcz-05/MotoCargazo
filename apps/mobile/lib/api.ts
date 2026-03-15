@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { isDemoApp } from "./app-mode";
 import {
   CategoryCode,
   getDemoContract,
@@ -9,6 +10,7 @@ import {
   getDemoVehicleProfiles,
   demoProviders
 } from "./demoCatalog";
+import type { AppImageSource } from "./imageSources";
 import { useDemoOrderStore } from "../store/demo-order-store";
 
 type FunctionPayload =
@@ -30,7 +32,8 @@ export type ProducerCard = {
   etaMin?: number;
   etaMax?: number;
   tagline?: string;
-  cardImage?: string;
+  cardImage?: string | null;
+  cardImageSource?: AppImageSource;
 };
 
 export type ProductItem = {
@@ -42,6 +45,10 @@ export type ProductItem = {
   unit: "kg" | "piece";
   base_price_eur: number;
   image_url: string | null;
+  image_source?: AppImageSource | null;
+  image_fallback_source?: AppImageSource | null;
+  featured?: boolean;
+  badge?: string;
 };
 
 export async function fetchProducersByCategory(categoryCode: CategoryCode) {
@@ -61,8 +68,13 @@ export async function fetchProducerById(producerId: string) {
       etaMax: demo.etaMax,
       tagline: demo.tagline,
       heroImage: demo.heroImage,
+      heroImageSource: demo.heroImageSource,
       products: demo.products as ProductItem[]
     };
+  }
+
+  if (isDemoApp) {
+    throw new Error("Proveedor demo no encontrado");
   }
 
   const [{ data: producer, error: producerError }, { data: org, error: orgError }, { data: products, error: productError }] =
@@ -92,6 +104,7 @@ export async function fetchProducerById(producerId: string) {
     city: org?.city ?? "Sevilla",
     rating: Number(producer.rating ?? 4.8),
     deliveryFeeEur: Number(producer.average_delivery_fee_eur ?? 11.09),
+    heroImage: null,
     products: (products ?? []) as ProductItem[]
   };
 }
@@ -106,6 +119,10 @@ export async function fetchProductById(productId: string) {
     } as ProductItem;
   }
 
+  if (isDemoApp) {
+    throw new Error("Producto demo no encontrado");
+  }
+
   const { data, error } = await supabase
     .from("products")
     .select("id, producer_id, category_code, name, description, unit, base_price_eur, image_url")
@@ -118,6 +135,10 @@ export async function fetchProductById(productId: string) {
 }
 
 export async function fetchActiveContract(restaurantId: string, producerId: string) {
+  if (isDemoApp) {
+    return getDemoContract(restaurantId, producerId);
+  }
+
   try {
     const { data, error } = await supabase
       .from("contracts")
@@ -138,6 +159,10 @@ export async function fetchActiveContract(restaurantId: string, producerId: stri
 }
 
 export async function fetchDeliveryWindows(producerId: string) {
+  if (isDemoApp) {
+    return getDemoDeliveryWindows(producerId);
+  }
+
   try {
     const { data, error } = await supabase
       .from("delivery_windows")
@@ -157,6 +182,10 @@ export async function fetchDeliveryWindows(producerId: string) {
 }
 
 export async function fetchVehicleProfiles(organizationId: string) {
+  if (isDemoApp) {
+    return getDemoVehicleProfiles(organizationId);
+  }
+
   try {
     const { data, error } = await supabase
       .from("vehicle_profiles")
@@ -177,6 +206,22 @@ export async function fetchVehicleProfiles(organizationId: string) {
 export async function fetchOrderById(orderId: string) {
   const demoOrder = useDemoOrderStore.getState().getOrder(orderId);
   if (demoOrder) return demoOrder;
+
+  if (isDemoApp) {
+    const now = new Date();
+    return {
+      id: orderId,
+      status: "submitted",
+      scheduled_delivery_start: new Date(now.getTime() + 45 * 60 * 1000).toISOString(),
+      scheduled_delivery_end: new Date(now.getTime() + 105 * 60 * 1000).toISOString(),
+      subtotal_eur: 0,
+      delivery_fee_eur: 0,
+      total_eur: 0,
+      producer_organization_id: demoProviders[0]?.id ?? "demo-producer",
+      restaurant_organization_id: "demo-restaurant",
+      items: []
+    };
+  }
 
   const [{ data: order, error: orderError }, { data: items, error: itemsError }] = await Promise.all([
     supabase
@@ -202,6 +247,19 @@ export async function fetchOrderById(orderId: string) {
 }
 
 export async function fetchProducerOrders(producerId: string) {
+  if (isDemoApp) {
+    return Object.values(useDemoOrderStore.getState().orders)
+      .filter((order) => order.producer_organization_id === producerId)
+      .map((order) => ({
+        id: order.id,
+        status: order.status,
+        scheduled_delivery_start: order.scheduled_delivery_start,
+        total_eur: order.total_eur,
+        restaurant_organization_id: order.restaurant_organization_id,
+        created_at: new Date().toISOString()
+      }));
+  }
+
   try {
     const { data, error } = await supabase
       .from("orders")
@@ -227,6 +285,21 @@ export async function fetchProducerOrders(producerId: string) {
 }
 
 export async function fetchProducerContracts(producerId: string) {
+  if (isDemoApp) {
+    const contract = getDemoContract("demo-restaurant", producerId);
+    if (!contract) return [];
+
+    return [
+      {
+        id: contract.id,
+        status: contract.status,
+        current_version: contract.current_version,
+        restaurant_organization_id: contract.restaurant_organization_id,
+        updated_at: new Date().toISOString()
+      }
+    ];
+  }
+
   try {
     const { data, error } = await supabase
       .from("contracts")
@@ -253,11 +326,17 @@ export async function fetchProducerContracts(producerId: string) {
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
+  if (isDemoApp) return;
+
   const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
   if (error) throw error;
 }
 
 async function invokeFunction<T>(name: string, payload: FunctionPayload): Promise<T> {
+  if (isDemoApp) {
+    throw new Error(`${name} is unavailable in demo mode.`);
+  }
+
   const { data, error } = await supabase.functions.invoke(name, {
     body: payload
   });
@@ -302,7 +381,7 @@ function createDemoOrderFromCheckout(payload: {
   const orderId = `demo-${Date.now()}`;
   useDemoOrderStore.getState().upsertOrder({
     id: orderId,
-    status: "submitted",
+    status: "out_for_delivery",
     scheduled_delivery_start: payload.scheduledDeliveryStart,
     scheduled_delivery_end: payload.scheduledDeliveryEnd,
     subtotal_eur: subtotal,
@@ -315,7 +394,7 @@ function createDemoOrderFromCheckout(payload: {
 
   return {
     orderId,
-    status: "submitted",
+    status: "out_for_delivery",
     totalEur: total
   };
 }
@@ -326,6 +405,14 @@ export async function createContractDraft(payload: {
   terms: Record<string, unknown>;
   changeNote?: string;
 }) {
+  if (isDemoApp) {
+    return {
+      contractId: `demo-contract-${payload.producerOrganizationId}`,
+      version: 1,
+      status: "draft"
+    };
+  }
+
   return invokeFunction<{ contractId: string; version: number; status: string }>("contracts-create-draft", payload);
 }
 
@@ -334,6 +421,14 @@ export async function requestContractRevision(payload: {
   message: string;
   changes: { field: string; currentValue: string; requestedValue: string }[];
 }) {
+  if (isDemoApp) {
+    return {
+      contractId: payload.contractId,
+      status: "revision_requested",
+      version: 2
+    };
+  }
+
   return invokeFunction<{ contractId: string; status: string; version: number }>("contracts-request-revision", payload);
 }
 
@@ -342,6 +437,14 @@ export async function acceptContract(payload: {
   version: number;
   acceptanceMethod: "in_app_checkbox" | "otp_email";
 }) {
+  if (isDemoApp) {
+    return {
+      contractId: payload.contractId,
+      status: "active",
+      acceptedAt: new Date().toISOString()
+    };
+  }
+
   return invokeFunction<{ contractId: string; status: string; acceptedAt: string }>("contracts-accept", payload);
 }
 
@@ -351,6 +454,15 @@ export async function validateCompliance(payload: {
   deliveryWindowId: string;
   vehicleProfileId: string;
 }) {
+  if (isDemoApp) {
+    return {
+      isCompliant: true,
+      reasons: [],
+      fallbackSlots: [],
+      alternateProducerIds: []
+    };
+  }
+
   try {
     return await invokeFunction<{
       isCompliant: boolean;
@@ -376,7 +488,7 @@ export async function checkoutOrder(payload: {
   scheduledDeliveryEnd: string;
   items: { productId: string; quantity: number; unit: "kg" | "piece" }[];
 }) {
-  if (payload.contractId.startsWith("demo-contract-")) {
+  if (isDemoApp || payload.contractId.startsWith("demo-contract-")) {
     return createDemoOrderFromCheckout(payload);
   }
 
@@ -402,6 +514,10 @@ export async function createRecurringPlan(payload: {
   active: boolean;
   next_run_at?: string;
 }) {
+  if (isDemoApp) {
+    return { id: `demo-recurring-${Date.now()}` };
+  }
+
   try {
     const { data, error } = await supabase.from("recurring_plans").insert(payload).select("id").single();
     if (error) throw error;

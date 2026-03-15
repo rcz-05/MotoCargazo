@@ -1,16 +1,27 @@
 import { Pressable, StyleSheet, Text, ViewStyle } from "react-native";
-import { colors, fonts, radius } from "../lib/theme";
+import { colors, elevation, fonts, radius } from "../lib/theme";
 
 type Props = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   dark?: boolean;
+  variant?: "primary" | "secondary" | "ghost";
   style?: ViewStyle;
   compact?: boolean;
 };
 
-export function PrimaryButton({ title, onPress, disabled, dark = false, style, compact = false }: Props) {
+export function PrimaryButton({
+  title,
+  onPress,
+  disabled,
+  dark = false,
+  variant,
+  style,
+  compact = false
+}: Props) {
+  const resolvedVariant = dark ? "ghost" : (variant ?? "primary");
+
   return (
     <Pressable
       onPress={onPress}
@@ -18,58 +29,77 @@ export function PrimaryButton({ title, onPress, disabled, dark = false, style, c
       style={({ pressed }) => [
         styles.button,
         compact && styles.compact,
-        dark ? styles.dark : styles.light,
+        resolvedVariant === "primary" && styles.primary,
+        resolvedVariant === "secondary" && styles.secondary,
+        resolvedVariant === "ghost" && styles.ghost,
+        pressed && !disabled && resolvedVariant === "primary" ? styles.primaryPressed : undefined,
         pressed && !disabled ? styles.pressed : undefined,
         disabled ? styles.disabled : undefined,
         style
       ]}
     >
-      <Text style={[styles.text, dark ? styles.darkText : styles.lightText]}>{title}</Text>
+      <Text
+        style={[
+          styles.text,
+          resolvedVariant === "primary" && styles.primaryText,
+          resolvedVariant === "secondary" && styles.secondaryText,
+          resolvedVariant === "ghost" && styles.ghostText
+        ]}
+      >
+        {title}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 54,
+    minHeight: 60,
     borderRadius: radius.pill,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    borderWidth: 1,
-    shadowColor: "#151515",
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2
+    ...elevation.level1
+  },
+  primary: {
+    backgroundColor: colors.actionPrimary
+  },
+  primaryPressed: {
+    backgroundColor: colors.actionPrimaryPressed
   },
   compact: {
-    minHeight: 46
+    minHeight: 52
   },
-  light: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brandDark
+  secondary: {
+    backgroundColor: colors.actionSecondary,
+    borderColor: colors.actionSecondaryBorder,
+    borderWidth: 2,
+    ...elevation.level1
   },
-  dark: {
-    backgroundColor: colors.textStrong,
-    borderColor: "#29303a"
+  ghost: {
+    backgroundColor: colors.actionGhost,
+    borderColor: colors.lightBorder,
+    borderWidth: 2
   },
   text: {
-    fontSize: 18,
-    fontFamily: fonts.bodyStrong,
-    letterSpacing: 0.2
+    fontSize: 19,
+    fontFamily: fonts.bodyBold,
+    letterSpacing: 0.1
   },
-  lightText: {
-    color: colors.textDark
+  primaryText: {
+    color: "#1A1A18"
   },
-  darkText: {
-    color: colors.white
+  secondaryText: {
+    color: colors.brandDark
+  },
+  ghostText: {
+    color: colors.textStrong
   },
   pressed: {
-    transform: [{ scale: 0.994 }],
-    opacity: 0.95
+    transform: [{ scale: 0.986 }],
+    opacity: 0.94
   },
   disabled: {
-    opacity: 0.58
+    opacity: 0.52
   }
 });

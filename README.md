@@ -2,6 +2,8 @@
 
 MotoCargo is a B2B procurement and logistics MVP for restaurants and produce providers in Seville, Spain.
 
+The mobile app now defaults to a public restaurant demo mode. It launches without login and runs the ordering flow entirely on curated demo data unless you explicitly switch `EXPO_PUBLIC_APP_MODE=live`.
+
 ## Monorepo
 
 - `apps/mobile`: Expo React Native app for restaurants and producers
@@ -25,6 +27,7 @@ npm run dev:admin
 
 Create `.env` from `.env.example` and set:
 
+- `EXPO_PUBLIC_APP_MODE` (`demo` by default, use `live` only when wiring a real backend)
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SUPABASE_URL`

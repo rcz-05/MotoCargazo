@@ -35,24 +35,26 @@ const styles = StyleSheet.create({
   },
   pillLight: {
     borderColor: colors.lightBorder,
-    backgroundColor: colors.lightSurfaceSoft
+    backgroundColor: colors.lightSurface
   },
   lightNeutral: {
     borderColor: colors.lightBorder,
-    backgroundColor: "#f4f7fa"
+    backgroundColor: "#F3EBDD"
   },
   success: {
-    borderColor: colors.brand,
-    backgroundColor: "rgba(77,174,87,0.2)"
+    borderColor: "#B6D6BF",
+    backgroundColor: "#EAF4EC"
   },
   warning: {
-    borderColor: colors.warning,
-    backgroundColor: "rgba(228,178,79,0.18)"
+    borderColor: "#E6CFAB",
+    backgroundColor: "#F9F0DE"
   },
   label: {
     color: colors.textPrimary,
     fontFamily: fonts.bodyStrong,
-    fontSize: 12
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.3
   },
   labelLight: {
     color: colors.textStrong

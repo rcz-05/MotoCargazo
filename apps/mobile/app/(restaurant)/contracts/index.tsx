@@ -1,15 +1,20 @@
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../../components/AppScreen";
 import { EmptyState } from "../../../components/EmptyState";
 import { contractStatusLabel } from "../../../lib/showcase";
 import { supabase } from "../../../lib/supabase";
 import { useSession } from "../../../lib/session";
-import { colors, radius, spacing } from "../../../lib/theme";
+import { isDemoApp } from "../../../lib/app-mode";
+import { colors, elevation, fonts, radius, spacing } from "../../../lib/theme";
 
 export default function ContractsListScreen() {
+  if (isDemoApp) {
+    return <Redirect href="/(restaurant)" />;
+  }
+
   const { roleSession } = useSession();
 
   const { data, isLoading } = useQuery({
@@ -28,7 +33,7 @@ export default function ContractsListScreen() {
   });
 
   return (
-    <AppScreen scroll={false} style={{ paddingHorizontal: spacing.md }}>
+    <AppScreen scroll={false} dark={false} backgroundColor={colors.bgLight} style={{ paddingHorizontal: spacing.md }}>
       <FlatList
         data={data ?? []}
         keyExtractor={(item) => item.id}
@@ -36,26 +41,27 @@ export default function ContractsListScreen() {
           <View style={styles.header}>
             <View>
               <Text style={styles.title}>Contratos</Text>
-              <Text style={styles.subtitle}>Gestión de términos y precios pactados</Text>
+              <Text style={styles.subtitle}>Términos comerciales y revisiones activas</Text>
             </View>
             <View style={styles.actions}>
               <Pressable onPress={() => router.push("/(restaurant)/recurring/new")} style={styles.actionButton}>
-                <Ionicons name="repeat" size={14} color={colors.brandSoft} />
+                <MaterialCommunityIcons name="repeat" size={14} color={colors.brandDark} />
                 <Text style={styles.actionText}>Plan</Text>
               </Pressable>
               <Pressable onPress={() => router.push("/(restaurant)/contracts/new")} style={styles.actionButton}>
-                <Ionicons name="add" size={14} color={colors.brandSoft} />
+                <MaterialCommunityIcons name="plus" size={15} color={colors.brandDark} />
                 <Text style={styles.actionText}>Nuevo</Text>
               </Pressable>
             </View>
           </View>
         }
-        ListEmptyComponent={isLoading ? <Text style={styles.meta}>Cargando...</Text> : <EmptyState title="Sin contratos aún" />}
+        ListEmptyComponent={isLoading ? <Text style={styles.meta}>Cargando...</Text> : <EmptyState light title="Sin contratos aún" />}
         contentContainerStyle={{ gap: 10, paddingBottom: 24 }}
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => router.push(`/(restaurant)/contracts/${item.id}`)}>
             <Text style={styles.cardTitle}>{`Contrato #${item.id.slice(0, 8)}`}</Text>
-            <Text style={styles.meta}>{`Estado: ${contractStatusLabel(item.status)} · V${item.current_version}`}</Text>
+            <Text style={styles.meta}>{`Estado: ${contractStatusLabel(item.status)}`}</Text>
+            <Text style={styles.meta}>{`Versión: ${item.current_version}`}</Text>
           </Pressable>
         )}
       />
@@ -68,16 +74,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8
+    marginBottom: 8,
+    gap: 8
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "800"
+    color: colors.textStrong,
+    fontSize: 32,
+    lineHeight: 37,
+    fontFamily: fonts.heading
   },
   subtitle: {
-    color: colors.textSecondary,
-    fontSize: 12
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
   },
   actions: {
     flexDirection: "row",
@@ -87,34 +96,39 @@ const styles = StyleSheet.create({
   actionButton: {
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: "rgba(17, 34, 61, 0.75)",
-    minHeight: 32,
-    paddingHorizontal: 10,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    minHeight: 34,
+    paddingHorizontal: 11,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4
+    gap: 4,
+    ...elevation.level1
   },
   actionText: {
-    color: colors.brandSoft,
+    color: colors.brandDark,
     fontSize: 12,
-    fontWeight: "700"
+    letterSpacing: 0.2,
+    textTransform: "uppercase",
+    fontFamily: fonts.bodyStrong
   },
   card: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.bgCard,
-    padding: 12,
-    gap: 4
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    padding: 13,
+    gap: 4,
+    ...elevation.level1
   },
   cardTitle: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "700"
+    color: colors.textStrong,
+    fontSize: 18,
+    fontFamily: fonts.bodyStrong
   },
   meta: {
-    color: colors.textSecondary,
-    fontSize: 13
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
   }
 });

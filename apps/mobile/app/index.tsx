@@ -1,17 +1,47 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Redirect } from "expo-router";
+import { useEffect, useState } from "react";
 import { useSession } from "../lib/session";
+import { isDemoApp } from "../lib/app-mode";
 import { colors } from "../lib/theme";
+import { hasSeenLaunch } from "../lib/launch-state";
 
 export default function RootGate() {
   const { loading, session, roleSession, isDemoSession } = useSession();
+  const [launchLoading, setLaunchLoading] = useState(true);
+  const [launchSeen, setLaunchSeen] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    let mounted = true;
+
+    hasSeenLaunch()
+      .then((seen) => {
+        if (!mounted) return;
+        setLaunchSeen(seen);
+      })
+      .finally(() => {
+        if (mounted) setLaunchLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (loading || launchLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator color={colors.brand} size="large" />
+        <ActivityIndicator color={colors.brandDark} size="large" />
       </View>
     );
+  }
+
+  if (!launchSeen) {
+    return <Redirect href="/launch" />;
+  }
+
+  if (isDemoApp) {
+    return <Redirect href="/(restaurant)" />;
   }
 
   if (!session && !isDemoSession) {
@@ -34,6 +64,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.bgDark
+    backgroundColor: colors.bgLight
   }
 });

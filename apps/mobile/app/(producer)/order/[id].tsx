@@ -2,19 +2,15 @@ import { useMemo } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../../components/AppScreen";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { fetchOrderById, updateOrderStatus } from "../../../lib/api";
 import { formatDateTime } from "../../../lib/dates";
-import { colors, radius } from "../../../lib/theme";
+import { orderStatusLabel } from "../../../lib/showcase";
+import { colors, elevation, fonts, radius } from "../../../lib/theme";
 
-const statusOrder = [
-  "submitted",
-  "accepted_by_producer",
-  "preparing",
-  "out_for_delivery",
-  "delivered"
-] as const;
+const statusOrder = ["submitted", "accepted_by_producer", "preparing", "out_for_delivery", "delivered"] as const;
 
 function getNextStatus(current: string) {
   const index = statusOrder.indexOf(current as (typeof statusOrder)[number]);
@@ -40,10 +36,10 @@ export default function ProducerOrderDetailScreen() {
   });
 
   return (
-    <AppScreen>
+    <AppScreen dark={false} backgroundColor={colors.bgLight}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.back}>←</Text>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <MaterialCommunityIcons name="chevron-left" size={18} color={colors.textStrong} />
         </Pressable>
         <Text style={styles.title}>Detalle de pedido</Text>
       </View>
@@ -51,7 +47,7 @@ export default function ProducerOrderDetailScreen() {
       {orderQuery.data ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{`Pedido #${orderQuery.data.id.slice(0, 8)}`}</Text>
-          <Text style={styles.meta}>{`Estado actual: ${orderQuery.data.status}`}</Text>
+          <Text style={styles.meta}>{`Estado actual: ${orderStatusLabel(orderQuery.data.status)}`}</Text>
           <Text style={styles.meta}>{`Entrega: ${formatDateTime(orderQuery.data.scheduled_delivery_start)} - ${formatDateTime(orderQuery.data.scheduled_delivery_end)}`}</Text>
           <Text style={styles.meta}>{`Total: ${Number(orderQuery.data.total_eur).toFixed(2)}€`}</Text>
         </View>
@@ -61,14 +57,14 @@ export default function ProducerOrderDetailScreen() {
 
       {nextStatus ? (
         <PrimaryButton
-          title={mutation.isPending ? "Actualizando..." : `Marcar como ${nextStatus}`}
+          title={mutation.isPending ? "Actualizando..." : `Marcar como ${orderStatusLabel(nextStatus)}`}
           onPress={() => mutation.mutate(nextStatus)}
         />
       ) : (
         <Text style={styles.meta}>El pedido ya alcanzó su estado final.</Text>
       )}
 
-      <PrimaryButton dark title="Cancelar Pedido" onPress={() => mutation.mutate("cancelled")} />
+      <PrimaryButton variant="secondary" title="Cancelar pedido" onPress={() => mutation.mutate("cancelled")} />
     </AppScreen>
   );
 }
@@ -79,31 +75,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10
   },
-  back: {
-    color: colors.brand,
-    fontSize: 26,
-    fontWeight: "700"
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    alignItems: "center",
+    justifyContent: "center"
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: "800"
+    color: colors.textStrong,
+    fontSize: 30,
+    lineHeight: 35,
+    fontFamily: fonts.heading
   },
   card: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.bgDarkSoft,
-    padding: 10,
-    gap: 4
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    padding: 12,
+    gap: 4,
+    ...elevation.level1
   },
   cardTitle: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "700"
+    color: colors.textStrong,
+    fontSize: 17,
+    fontFamily: fonts.bodyStrong
   },
   meta: {
-    color: colors.textSecondary,
-    fontSize: 13
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
   }
 });

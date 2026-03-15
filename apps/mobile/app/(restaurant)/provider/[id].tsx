@@ -1,15 +1,24 @@
 import { useLocalSearchParams, router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Animated, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../../components/AppScreen";
 import { ProductRow } from "../../../components/ProductRow";
 import { EmptyState } from "../../../components/EmptyState";
+import { AppImage } from "../../../components/AppImage";
+import { FilterChip } from "../../../components/FilterChip";
+import { FloatingCartCTA } from "../../../components/FloatingCartCTA";
+import { MetaStatPill } from "../../../components/MetaStatPill";
+import { StickySearchHeader } from "../../../components/StickySearchHeader";
 import { fetchProducerById } from "../../../lib/api";
-import { producerHeroImage } from "../../../lib/showcase";
+import { getDemoProviderById } from "../../../lib/demoCatalog";
+import { preloadImageSources } from "../../../lib/imageSources";
+import { warmProductRoute } from "../../../lib/restaurantPrefetch";
+import { categoryVisuals, producerHeroImage } from "../../../lib/showcase";
 import { useCartStore } from "../../../store/cart-store";
-import { colors, fonts, radius, spacing } from "../../../lib/theme";
+import { colors, elevation, fonts, radius, spacing } from "../../../lib/theme";
+import { motionStagger, runLayoutTransition, useEntranceAnimation, useReducedMotionPreference } from "../../../lib/motion";
 
 const categoryLabel: Record<string, string> = {
   meat: "Carnes",
@@ -22,10 +31,13 @@ export default function ProducerCatalogScreen() {
   const addItem = useCartStore((state) => state.addItem);
   const items = useCartStore((state) => state.items);
   const subtotal = useCartStore((state) => state.getSubtotal());
+  const reducedMotion = useReducedMotionPreference();
+  const heroMotion = useEntranceAnimation({ delay: motionStagger.screenEnter, reducedMotion });
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["producer", id],
     enabled: Boolean(id),
+    initialData: id ? getDemoProviderById(id) ?? undefined : undefined,
     queryFn: () => fetchProducerById(id)
   });
 
@@ -35,12 +47,40 @@ export default function ProducerCatalogScreen() {
   }, [data?.products]);
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<"top" | "priceAsc" | "priceDesc">("top");
 
   const selectedCategory = activeCategory ?? categories[0] ?? null;
+  const fallbackCategory = (selectedCategory ?? categories[0] ?? "produce") as "meat" | "seafood" | "produce";
   const visibleProducts = useMemo(() => {
     if (!data?.products?.length || !selectedCategory) return [];
-    return data.products.filter((product) => product.category_code === selectedCategory);
-  }, [data?.products, selectedCategory]);
+    const query = searchQuery.trim().toLowerCase();
+
+    const filtered = data.products.filter((product) => {
+      if (product.category_code !== selectedCategory) return false;
+      if (!query) return true;
+      const haystack = `${product.name} ${product.description ?? ""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+
+    if (sortMode === "priceAsc") {
+      return [...filtered].sort((a, b) => Number(a.base_price_eur) - Number(b.base_price_eur));
+    }
+
+    if (sortMode === "priceDesc") {
+      return [...filtered].sort((a, b) => Number(b.base_price_eur) - Number(a.base_price_eur));
+    }
+
+    return [...filtered].sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false));
+  }, [data?.products, selectedCategory, searchQuery, sortMode]);
+
+  useEffect(() => {
+    if (!data) return;
+    void preloadImageSources([
+      data.heroImageSource ?? data.heroImage,
+      ...visibleProducts.slice(0, 6).flatMap((product) => [product.image_source ?? product.image_url, product.image_fallback_source])
+    ]);
+  }, [data, visibleProducts]);
 
   if (isLoading) {
     return (
@@ -66,68 +106,101 @@ export default function ProducerCatalogScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
-          <View style={styles.headerWrap}>
+          <Animated.View style={[styles.headerWrap, heroMotion]}>
             <View style={styles.navRow}>
               <Pressable onPress={() => router.back()} style={styles.iconButton}>
-                <Ionicons name="chevron-back" size={20} color={colors.textStrong} />
+                <MaterialCommunityIcons name="chevron-left" size={20} color={colors.textStrong} />
               </Pressable>
               <Text style={styles.navTitle} numberOfLines={1}>
                 {data.name}
               </Text>
               <Pressable style={styles.iconButton} onPress={() => router.push("/(restaurant)/cart")}>
-                <Ionicons name="cart-outline" size={18} color={colors.textStrong} />
+                <MaterialCommunityIcons name="cart-outline" size={18} color={colors.textStrong} />
               </Pressable>
             </View>
 
             <View style={styles.heroCard}>
-              <Image source={{ uri: data.heroImage ?? producerHeroImage(data.id) }} style={styles.heroImage} />
+              <AppImage
+                source={data.heroImageSource ?? data.heroImage}
+                fallbackSource={
+                  data.heroImageSource ? undefined : [producerHeroImage(data.id, fallbackCategory), categoryVisuals[fallbackCategory].coverImage]
+                }
+                style={styles.heroImage}
+                borderRadius={0}
+              />
               <View style={styles.heroOverlay} />
 
               <View style={styles.heroContent}>
                 <Text style={styles.heroTitle}>{data.name}</Text>
-                <Text style={styles.heroSubtitle}>
-                  {data.tagline ?? `Suministro profesional para hostelería en ${data.city}`}
-                </Text>
+              <Text style={styles.heroSubtitle}>
+                {data.tagline ?? `Suministro profesional para hostelería en ${data.city}`}
+              </Text>
 
                 <View style={styles.metricsRow}>
-                  <View style={styles.metricItem}>
-                    <Ionicons name="thumbs-up-outline" size={14} color="#0ea35b" />
-                    <Text style={styles.metricText}>{`${(data.rating * 20).toFixed(0)}%`}</Text>
-                  </View>
-                  <View style={styles.metricItem}>
-                    <Ionicons name="time-outline" size={14} color={colors.textStrong} />
-                    <Text style={styles.metricText}>{`${data.etaMin ?? 22}-${data.etaMax ?? 35} min`}</Text>
-                  </View>
-                  <View style={styles.metricItem}>
-                    <Ionicons name="bicycle-outline" size={14} color={colors.textStrong} />
-                    <Text style={styles.metricText}>{`${data.deliveryFeeEur.toFixed(2)}€`}</Text>
-                  </View>
+                  <MetaStatPill icon="thumbs-up-outline" label={`${(data.rating * 20).toFixed(0)}%`} emphasis="success" />
+                  <MetaStatPill icon="time-outline" label={`${data.etaMin ?? 22}-${data.etaMax ?? 35} min`} />
+                  <MetaStatPill icon="bicycle-outline" label={`${data.deliveryFeeEur.toFixed(2)}€`} />
                 </View>
               </View>
             </View>
 
-            <Pressable style={styles.searchBar}>
-              <Ionicons name="search-outline" size={18} color={colors.textSoftDark} />
-              <Text style={styles.searchText}>¿Qué necesitas?</Text>
-            </Pressable>
+            <StickySearchHeader
+              query={searchQuery}
+              onChangeQuery={setSearchQuery}
+              placeholder="Buscar producto dentro del catálogo"
+            />
+
+            <View style={styles.promoStrip}>
+              <MaterialCommunityIcons name="star-four-points" size={16} color="#5E420D" />
+              <Text style={styles.promoText}>Entrega prioritaria disponible en franja 06:00 - 08:00</Text>
+            </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
               {categories.map((category) => {
                 const isActive = selectedCategory === category;
                 return (
-                  <Pressable
+                  <FilterChip
                     key={category}
-                    style={[styles.tab, isActive && styles.tabActive]}
-                    onPress={() => setActiveCategory(category)}
-                  >
-                    <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{categoryLabel[category] ?? category}</Text>
-                  </Pressable>
+                    label={categoryLabel[category] ?? category}
+                    selected={isActive}
+                    onPress={() => {
+                      runLayoutTransition(reducedMotion);
+                      setActiveCategory(category);
+                    }}
+                  />
                 );
               })}
             </ScrollView>
 
-            <Text style={styles.sectionTitle}>Lo más vendido</Text>
-          </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
+              <FilterChip
+                label="Top ventas"
+                selected={sortMode === "top"}
+                onPress={() => {
+                  runLayoutTransition(reducedMotion);
+                  setSortMode("top");
+                }}
+              />
+              <FilterChip
+                label="Precio ↑"
+                selected={sortMode === "priceAsc"}
+                onPress={() => {
+                  runLayoutTransition(reducedMotion);
+                  setSortMode("priceAsc");
+                }}
+              />
+              <FilterChip
+                label="Precio ↓"
+                selected={sortMode === "priceDesc"}
+                onPress={() => {
+                  runLayoutTransition(reducedMotion);
+                  setSortMode("priceDesc");
+                }}
+              />
+            </ScrollView>
+
+            <Text style={styles.sectionTitle}>Catálogo</Text>
+          </Animated.View>
         }
         ListEmptyComponent={<EmptyState light title="No hay productos en esta categoría" />}
         renderItem={({ item }) => (
@@ -135,32 +208,39 @@ export default function ProducerCatalogScreen() {
             name={item.name}
             subtitle={`${item.description ?? "Producto fresco"} · ${item.unit}`}
             price={Number(item.base_price_eur)}
-            imageUrl={item.image_url}
+            imageSource={item.image_source ?? item.image_url}
+            fallbackSource={item.image_source ? item.image_fallback_source : undefined}
+            category={item.category_code}
+            badge={item.badge}
+            onPressIn={() => warmProductRoute(item.id)}
             onPress={() => router.push(`/(restaurant)/product/${item.id}`)}
             onAdd={() =>
               addItem(
                 {
                   productId: item.id,
                   producerId: item.producer_id,
+                  category: item.category_code,
                   name: item.name,
                   unit: item.unit,
                   unitPriceEur: Number(item.base_price_eur),
-                  imageUrl: item.image_url
+                  imageUrl: item.image_url,
+                  imageSource: item.image_source
                 },
                 1
               )
             }
           />
         )}
-        ListFooterComponent={<View style={{ height: items.length > 0 ? 96 : 24 }} />}
+        ListFooterComponent={<View style={{ height: items.length > 0 ? 132 : 26 }} />}
       />
 
       {items.length > 0 ? (
-        <View style={styles.stickyActionWrap}>
-          <Pressable style={styles.stickyAction} onPress={() => router.push("/(restaurant)/cart")}>
-            <Text style={styles.stickyActionText}>{`Pedir ${items.length} producto${items.length > 1 ? "s" : ""} por ${subtotal.toFixed(2)}€`}</Text>
-          </Pressable>
-        </View>
+        <FloatingCartCTA
+          count={items.length}
+          totalLabel={`${subtotal.toFixed(2)}€`}
+          title={`Pedir ${items.length} producto${items.length > 1 ? "s" : ""}`}
+          onPress={() => router.push("/(restaurant)/cart")}
+        />
       ) : null}
     </AppScreen>
   );
@@ -191,22 +271,24 @@ const styles = StyleSheet.create({
     borderColor: colors.lightBorder,
     backgroundColor: colors.lightSurface,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    ...elevation.level1
   },
   navTitle: {
     flex: 1,
     textAlign: "center",
     marginHorizontal: 10,
     color: colors.textStrong,
-    fontSize: 23,
-    lineHeight: 28,
+    fontSize: 22,
+    lineHeight: 27,
     fontFamily: fonts.heading
   },
   heroCard: {
     borderRadius: radius.xl,
     overflow: "hidden",
     minHeight: 230,
-    position: "relative"
+    position: "relative",
+    ...elevation.level2
   },
   heroImage: {
     width: "100%",
@@ -215,7 +297,7 @@ const styles = StyleSheet.create({
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(14,19,24,0.3)"
+    backgroundColor: "rgba(14,19,24,0.44)"
   },
   heroContent: {
     position: "absolute",
@@ -226,78 +308,42 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.white,
-    fontSize: 36,
-    lineHeight: 40,
+    fontSize: 33,
+    lineHeight: 37,
     fontFamily: fonts.heading
   },
   heroSubtitle: {
     color: "#ecf2f4",
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
-    fontFamily: fonts.body
+    fontFamily: fonts.bodyStrong
   },
   metricsRow: {
     marginTop: 3,
     flexDirection: "row",
-    gap: 8
-  },
-  metricItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    minHeight: 30,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.45)",
-    backgroundColor: "rgba(248,251,255,0.88)"
-  },
-  metricText: {
-    color: colors.textStrong,
-    fontSize: 12,
-    fontFamily: fonts.bodyStrong
-  },
-  searchBar: {
-    minHeight: 44,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.lightBorder,
-    backgroundColor: colors.lightSurface,
-    flexDirection: "row",
-    alignItems: "center",
     gap: 8,
-    paddingHorizontal: 12
+    flexWrap: "wrap"
   },
-  searchText: {
-    color: colors.textSoftDark,
-    fontSize: 14,
-    fontFamily: fonts.body
+  promoStrip: {
+    minHeight: 40,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: "#C39B4A",
+    backgroundColor: "#FFF2CC",
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7
+  },
+  promoText: {
+    flex: 1,
+    color: "#5E420D",
+    fontSize: 13,
+    fontFamily: fonts.bodyBold
   },
   tabsRow: {
     gap: 8,
     paddingVertical: 2
-  },
-  tab: {
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.lightBorder,
-    backgroundColor: colors.lightSurface,
-    paddingHorizontal: 14,
-    minHeight: 36,
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  tabActive: {
-    borderColor: "#f2ce5f",
-    backgroundColor: "#fff7db"
-  },
-  tabText: {
-    color: colors.textSoftDark,
-    fontSize: 13,
-    fontFamily: fonts.bodyStrong
-  },
-  tabTextActive: {
-    color: colors.textStrong
   },
   sectionTitle: {
     marginTop: 2,
@@ -310,31 +356,5 @@ const styles = StyleSheet.create({
     color: colors.textSoftDark,
     fontSize: 14,
     fontFamily: fonts.body
-  },
-  stickyActionWrap: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 14
-  },
-  stickyAction: {
-    minHeight: 52,
-    borderRadius: radius.pill,
-    backgroundColor: "#00b48d",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#009f7d",
-    shadowColor: "#0d3029",
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 2
-  },
-  stickyActionText: {
-    color: colors.white,
-    fontSize: 20,
-    lineHeight: 24,
-    fontFamily: fonts.bodyStrong
   }
 });

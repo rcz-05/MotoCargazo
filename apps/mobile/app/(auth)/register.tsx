@@ -1,16 +1,17 @@
 import { Link, router } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { useState } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AppScreen } from "../../components/AppScreen";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { TextInputField } from "../../components/TextInputField";
-import { colors, fonts, radius } from "../../lib/theme";
+import { colors, elevation, fonts, radius } from "../../lib/theme";
 import { supabase } from "../../lib/supabase";
 import { useSession } from "../../lib/session";
 import { mapRegisterError } from "../../lib/authErrors";
+import { motionStagger, useEntranceAnimation, useReducedMotionPreference } from "../../lib/motion";
 
 const registerSchema = z.object({
   fullName: z.string().min(2, "Nombre requerido"),
@@ -24,6 +25,10 @@ type RegisterValues = z.infer<typeof registerSchema>;
 export default function RegisterScreen() {
   const { refreshRoleSession, enterDemoSession } = useSession();
   const [formMessage, setFormMessage] = useState<{ type: "error" | "info"; text: string } | null>(null);
+  const reducedMotion = useReducedMotionPreference();
+  const heroMotion = useEntranceAnimation({ delay: motionStagger.screenEnter, reducedMotion });
+  const cardMotion = useEntranceAnimation({ delay: motionStagger.screenEnter * 2, reducedMotion });
+
   const {
     control,
     handleSubmit,
@@ -115,12 +120,12 @@ export default function RegisterScreen() {
 
   return (
     <AppScreen dark={false} style={styles.root} contentContainerStyle={styles.content}>
-      <View style={styles.hero}>
+      <Animated.View style={[styles.hero, heroMotion]}>
         <Text style={styles.heroTitle}>Crear cuenta</Text>
-        <Text style={styles.heroSubtitle}>Empieza a operar compras de cocina con un flujo profesional.</Text>
-      </View>
+        <Text style={styles.heroSubtitle}>Activa tu operación B2B y empieza a pedir con flujo guiado.</Text>
+      </Animated.View>
 
-      <View style={styles.formCard}>
+      <Animated.View style={[styles.formCard, cardMotion]}>
         <Controller
           control={control}
           name="fullName"
@@ -193,7 +198,7 @@ export default function RegisterScreen() {
         />
 
         {selectedRole === "producer" ? (
-          <Text style={styles.helper}>Alta de proveedor con invitación activa. Demo: proveedor-demo@motocargo.es</Text>
+          <Text style={styles.helper}>El alta de proveedor requiere invitación activa. Demo: proveedor-demo@motocargo.es</Text>
         ) : null}
 
         {formMessage ? (
@@ -203,7 +208,7 @@ export default function RegisterScreen() {
         <PrimaryButton title={isSubmitting ? "Creando..." : "Crear cuenta"} onPress={handleSubmit(onSubmit)} disabled={isSubmitting} />
 
         <View style={styles.demoBox}>
-          <Text style={styles.demoTitle}>Continuar sin bloqueo (demo)</Text>
+          <Text style={styles.demoTitle}>Entrar en modo demo</Text>
           <View style={styles.demoActions}>
             <Pressable
               style={styles.demoButton}
@@ -229,7 +234,7 @@ export default function RegisterScreen() {
         <Link href="/(auth)/login" style={styles.link}>
           Ya tengo cuenta
         </Link>
-      </View>
+      </Animated.View>
     </AppScreen>
   );
 }
@@ -247,7 +252,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brandYellow,
     paddingHorizontal: 18,
     paddingVertical: 20,
-    gap: 6
+    gap: 6,
+    ...elevation.level2
   },
   heroTitle: {
     color: colors.textStrong,
@@ -267,7 +273,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.lightBorder,
     backgroundColor: colors.lightSurface,
-    padding: 16
+    padding: 16,
+    ...elevation.level1
   },
   roleBlock: {
     gap: 8
@@ -292,8 +299,8 @@ const styles = StyleSheet.create({
     alignItems: "center"
   },
   roleButtonActive: {
-    borderColor: colors.brand,
-    backgroundColor: "#e8f8ed"
+    borderColor: colors.brandDark,
+    backgroundColor: "#f2e0b8"
   },
   roleText: {
     color: colors.textSoftDark,
@@ -310,10 +317,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body
   },
   demoBox: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.lightBorder,
-    backgroundColor: colors.lightSurfaceSoft,
+    borderColor: "#d8c29a",
+    backgroundColor: "#f9f0dc",
     padding: 10,
     gap: 8
   },
@@ -330,19 +337,19 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 38,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: "#bde9c8",
-    backgroundColor: "#eaf9ee",
+    borderWidth: 2,
+    borderColor: colors.actionPrimaryBorder,
+    backgroundColor: colors.actionPrimary,
     justifyContent: "center",
     alignItems: "center"
   },
   demoButtonText: {
-    color: colors.brandDark,
+    color: "#f8f7f1",
     fontSize: 12,
     fontFamily: fonts.bodyStrong
   },
   formMessage: {
-    color: "#dd3f3f",
+    color: colors.danger,
     fontSize: 13,
     lineHeight: 18,
     fontFamily: fonts.body

@@ -1,17 +1,17 @@
 import { useLocalSearchParams, router } from "expo-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../../components/AppScreen";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { EmptyState } from "../../../components/EmptyState";
+import { AppImage } from "../../../components/AppImage";
 import { fetchProductById } from "../../../lib/api";
+import { getDemoProductById } from "../../../lib/demoCatalog";
+import { buildImageFallbackChain } from "../../../lib/demoMedia";
 import { useCartStore } from "../../../store/cart-store";
-import { colors, fonts, radius, spacing } from "../../../lib/theme";
-
-const fallbackImage =
-  "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=900&q=80";
+import { colors, elevation, fonts, radius, spacing } from "../../../lib/theme";
 
 type Addon = {
   id: string;
@@ -40,7 +40,7 @@ function buildAddonGroups(category: "meat" | "seafood" | "produce"): AddonGroup[
       },
       {
         id: "extra",
-        title: "Extras",
+        title: "Extras logísticos",
         max: 2,
         options: [
           { id: "hielo", label: "Con cama de hielo extra", price: 0.95 },
@@ -53,7 +53,7 @@ function buildAddonGroups(category: "meat" | "seafood" | "produce"): AddonGroup[
   return [
     {
       id: "corte",
-      title: "Preparación de carne",
+      title: "Preparación de producto",
       max: 2,
       options: [
         { id: "porcionado", label: "Porcionado gastronómico", price: 1.25 },
@@ -82,6 +82,7 @@ export default function ProductDetailScreen() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["product", id],
     enabled: Boolean(id),
+    initialData: id ? getDemoProductById(id) ?? undefined : undefined,
     queryFn: () => fetchProductById(id)
   });
 
@@ -102,6 +103,7 @@ export default function ProductDetailScreen() {
   }
 
   const addonGroups = buildAddonGroups(data.category_code);
+  const imageFallback = data.image_source ? data.image_fallback_source : buildImageFallbackChain(data.category_code, data.image_url);
 
   const selectedExtrasTotal = useMemo(() => {
     return addonGroups.reduce((sum, group) => {
@@ -119,15 +121,18 @@ export default function ProductDetailScreen() {
   return (
     <AppScreen scroll={false} dark={false} backgroundColor={colors.bgLight} style={styles.root}>
       <View style={styles.imageArea}>
-        <Image source={{ uri: data.image_url ?? fallbackImage }} style={styles.heroImage} />
+        <AppImage source={data.image_source ?? data.image_url} fallbackSource={imageFallback} style={styles.heroImage} borderRadius={0} />
+        <View style={styles.imageOverlay} />
         <Pressable style={styles.closeButton} onPress={() => router.back()}>
-          <Ionicons name="close" size={20} color={colors.white} />
+          <MaterialCommunityIcons name="close" size={20} color={colors.white} />
         </Pressable>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentBody} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>{data.name}</Text>
-        <Text style={styles.price}>{`${basePrice.toFixed(2)}€`}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{data.name}</Text>
+          <Text style={styles.price}>{`${basePrice.toFixed(2)}€`}</Text>
+        </View>
         <Text style={styles.description}>{data.description ?? "Producto fresco seleccionado para cocina profesional."}</Text>
 
         {addonGroups.map((group) => {
@@ -159,7 +164,7 @@ export default function ProductDetailScreen() {
                       <Text style={styles.optionPrice}>{`+${option.price.toFixed(2)}€`}</Text>
                     </View>
                     <View style={[styles.optionToggle, checked && styles.optionToggleActive]}>
-                      <Ionicons name={checked ? "checkmark" : "add"} size={16} color={checked ? colors.white : colors.brandDark} />
+                      <MaterialCommunityIcons name={checked ? "check" : "plus"} size={16} color={checked ? colors.white : colors.brandDark} />
                     </View>
                   </Pressable>
                 );
@@ -168,17 +173,17 @@ export default function ProductDetailScreen() {
           );
         })}
 
-        <View style={{ height: 36 }} />
+        <View style={{ height: 110 }} />
       </ScrollView>
 
       <View style={styles.bottomBar}>
         <View style={styles.quantityRow}>
           <Pressable style={styles.quantityButton} onPress={() => setQuantity((value) => Math.max(1, value - 1))}>
-            <Ionicons name="remove" size={18} color={colors.brandDark} />
+            <MaterialCommunityIcons name="minus" size={18} color={colors.brandDark} />
           </Pressable>
           <Text style={styles.quantityText}>{quantity}</Text>
           <Pressable style={styles.quantityButton} onPress={() => setQuantity((value) => value + 1)}>
-            <Ionicons name="add" size={18} color={colors.brandDark} />
+            <MaterialCommunityIcons name="plus" size={18} color={colors.brandDark} />
           </Pressable>
         </View>
 
@@ -189,10 +194,12 @@ export default function ProductDetailScreen() {
               {
                 productId: data.id,
                 producerId: data.producer_id,
+                category: data.category_code,
                 name: data.name,
                 unit: data.unit,
                 unitPriceEur: unitPriceWithExtras,
-                imageUrl: data.image_url
+                imageUrl: data.image_url,
+                imageSource: data.image_source
               },
               quantity
             );
@@ -217,6 +224,10 @@ const styles = StyleSheet.create({
     height: 280,
     backgroundColor: "#d8d8d8"
   },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.08)"
+  },
   closeButton: {
     position: "absolute",
     top: 12,
@@ -236,42 +247,50 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     gap: 10
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 10
+  },
   title: {
+    flex: 1,
     color: colors.textStrong,
-    fontSize: 37,
-    lineHeight: 41,
-    fontFamily: fonts.heading
+    fontSize: 33,
+    lineHeight: 38,
+    fontFamily: fonts.display
   },
   price: {
     color: colors.textStrong,
-    fontSize: 30,
+    fontSize: 31,
     lineHeight: 34,
-    fontFamily: fonts.heading
+    fontFamily: fonts.bodyBold
   },
   description: {
     color: colors.textSoftDark,
     fontSize: 15,
     lineHeight: 21,
-    fontFamily: fonts.body
+    fontFamily: fonts.bodyStrong
   },
   optionGroup: {
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.lightBorder,
+    borderWidth: 2,
+    borderColor: "#D3B992",
     backgroundColor: colors.lightSurface,
     padding: 12,
-    gap: 8
+    gap: 8,
+    ...elevation.level1
   },
   groupTitle: {
     color: colors.textStrong,
-    fontSize: 22,
-    lineHeight: 27,
+    fontSize: 21,
+    lineHeight: 26,
     fontFamily: fonts.heading
   },
   groupHint: {
     color: colors.textSoftDark,
     fontSize: 12,
-    fontFamily: fonts.body
+    fontFamily: fonts.bodyStrong
   },
   optionRow: {
     flexDirection: "row",
@@ -282,21 +301,21 @@ const styles = StyleSheet.create({
   optionLabel: {
     color: colors.textStrong,
     fontSize: 15,
-    fontFamily: fonts.bodyStrong
+    fontFamily: fonts.bodyBold
   },
   optionPrice: {
     color: colors.brandDark,
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 1,
-    fontFamily: fonts.body
+    fontFamily: fonts.bodyStrong
   },
   optionToggle: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#9cdcb0",
-    backgroundColor: "#e8f8ed",
+    borderWidth: 2,
+    borderColor: "#385026",
+    backgroundColor: "#E7F0DA",
     alignItems: "center",
     justifyContent: "center"
   },
@@ -305,15 +324,20 @@ const styles = StyleSheet.create({
     borderColor: colors.brandDark
   },
   bottomBar: {
-    borderTopWidth: 1,
-    borderColor: colors.lightBorder,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopWidth: 2,
+    borderColor: "#D3B992",
     backgroundColor: colors.lightSurface,
     paddingHorizontal: spacing.md,
     paddingTop: 10,
     paddingBottom: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12
+    gap: 12,
+    ...elevation.floating
   },
   quantityRow: {
     flexDirection: "row",
@@ -324,9 +348,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#9cdcb0",
-    backgroundColor: "#e8f8ed",
+    borderWidth: 2,
+    borderColor: "#385026",
+    backgroundColor: "#E7F0DA",
     alignItems: "center",
     justifyContent: "center"
   },
@@ -335,7 +359,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: colors.textStrong,
     fontSize: 20,
-    fontFamily: fonts.heading
+    fontFamily: fonts.bodyBold
   },
   addButton: {
     flex: 1

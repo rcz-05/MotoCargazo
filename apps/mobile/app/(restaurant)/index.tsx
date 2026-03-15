@@ -1,15 +1,23 @@
 import { router } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
+import { AppImage } from "../../components/AppImage";
+import { FloatingCartCTA } from "../../components/FloatingCartCTA";
+import { MetaStatPill } from "../../components/MetaStatPill";
+import { SectionHeader } from "../../components/SectionHeader";
 import { fetchProducersByCategory } from "../../lib/api";
+import { getDemoProducerCardsByCategory } from "../../lib/demoCatalog";
+import { warmProviderRoute } from "../../lib/restaurantPrefetch";
 import { categoryVisuals, producerCardImage } from "../../lib/showcase";
 import { useSession } from "../../lib/session";
-import { colors, fonts, radius, spacing } from "../../lib/theme";
+import { colors, elevation, fonts, radius, spacing } from "../../lib/theme";
 import { useCartStore } from "../../store/cart-store";
+import { motionStagger, useEntranceAnimation, useReducedMotionPreference } from "../../lib/motion";
+import { DemoCategoryCode } from "../../lib/demoMedia";
 
 const categories = [
   { code: "meat", label: "Carnes" },
@@ -18,90 +26,149 @@ const categories = [
 ] as const;
 
 export default function RestaurantHomeScreen() {
-  const { roleSession, signOut } = useSession();
-  const cartCount = useCartStore((state) => state.items.length);
+  const { roleSession } = useSession();
+  const cartItems = useCartStore((state) => state.items);
+  const cartCount = cartItems.length;
+  const cartSubtotal = useCartStore((state) => state.getSubtotal());
+  const [searchQuery, setSearchQuery] = useState("");
+  const reducedMotion = useReducedMotionPreference();
+  const heroMotion = useEntranceAnimation({ delay: motionStagger.screenEnter, reducedMotion });
+  const sectionMotion = useEntranceAnimation({ delay: motionStagger.screenEnter * 2, reducedMotion });
 
   const categoryQueries = useQueries({
     queries: categories.map((category) => ({
       queryKey: ["home-providers", category.code],
-      queryFn: () => fetchProducersByCategory(category.code)
+      queryFn: () => fetchProducersByCategory(category.code),
+      initialData: getDemoProducerCardsByCategory(category.code)
     }))
   });
 
   const featuredProviders = useMemo(() => {
     const grouped = categoryQueries.flatMap((query) => query.data ?? []);
     const unique = new Map(grouped.map((producer) => [producer.id, producer]));
-    return [...unique.values()].slice(0, 6);
-  }, [categoryQueries]);
+    const filtered = [...unique.values()].filter((provider) => {
+      const haystack = `${provider.name} ${provider.city} ${provider.tagline ?? ""}`.toLowerCase();
+      return haystack.includes(searchQuery.trim().toLowerCase());
+    });
+    return filtered;
+  }, [categoryQueries, searchQuery]);
+
+  const readyToday = featuredProviders.slice(0, 8);
+  const topMarkets = [...featuredProviders].sort((a, b) => b.rating - a.rating).slice(0, 6);
+  const quickReorder = topMarkets.slice(0, 3);
 
   const hasError = categoryQueries.some((query) => query.error);
   const isLoading = categoryQueries.every((query) => query.isLoading);
 
   return (
-    <AppScreen dark={false} backgroundColor={colors.bgLight} style={styles.root}>
-      <View style={styles.topHero}>
+    <AppScreen dark={false} backgroundColor={colors.bgLight} style={styles.root} contentContainerStyle={styles.content}>
+      <Animated.View style={[styles.topHero, heroMotion]}>
         <View style={styles.topRow}>
-          <Pressable style={styles.avatarButton}>
-            <Ionicons name="person-outline" size={19} color={colors.textStrong} />
-          </Pressable>
-          <Pressable style={styles.searchBar} onPress={() => router.push("/(restaurant)/providers/meat")}>
-            <Ionicons name="search-outline" size={18} color={colors.textSoftDark} />
-            <Text style={styles.searchText}>¿Qué necesitas hoy?</Text>
-          </Pressable>
-          <Pressable style={styles.cartButton} onPress={() => router.push("/(restaurant)/cart")}>
-            <Ionicons name="cart-outline" size={18} color={colors.textStrong} />
-            {cartCount > 0 ? <Text style={styles.cartCount}>{cartCount}</Text> : null}
-          </Pressable>
+          <View style={styles.addressWrap}>
+            <Text style={styles.address}>{roleSession.organizationName ?? "Tu Restaurante"}</Text>
+            <Text style={styles.addressSub}>{roleSession.city ?? "Sevilla"} · demo pública</Text>
+          </View>
+          <View style={styles.demoBadge}>
+            <MaterialCommunityIcons name="silverware-fork-knife" size={15} color={colors.brandDark} />
+            <Text style={styles.demoBadgeText}>Restaurante demo</Text>
+          </View>
         </View>
 
-        <View style={styles.addressRow}>
-          <Text style={styles.address}>{roleSession.organizationName ?? "Tu restaurante"}</Text>
-          <Text style={styles.addressSub}>{roleSession.city ?? "Sevilla"} · Operativa en curso</Text>
+        <View style={styles.searchBar}>
+          <MaterialCommunityIcons name="magnify" size={18} color={colors.textSoftDark} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="¿Qué necesitas hoy?"
+            placeholderTextColor={colors.textSoftDark}
+            style={styles.searchInput}
+            returnKeyType="search"
+          />
+          {searchQuery ? (
+            <Pressable onPress={() => setSearchQuery("")}>
+              <MaterialCommunityIcons name="close-circle-outline" size={18} color={colors.textSoftDark} />
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.categoryBubbleGrid}>
           {categories.map((category) => {
-            const visual = categoryVisuals[category.code];
+            const visual = categoryVisuals[category.code as DemoCategoryCode];
+            const iconDescriptor = visual.icon;
             return (
               <Pressable
                 key={category.code}
                 style={styles.categoryBubble}
                 onPress={() => router.push(`/(restaurant)/providers/${category.code}`)}
               >
-                <View style={[styles.categoryIconWrap, { backgroundColor: `${visual.accentColor}22` }]}>
-                  <Text style={styles.categoryIcon}>{visual.icon}</Text>
+                <View style={[styles.categoryIconWrap, { borderColor: `${visual.accentColor}4A` }]}>
+                  <MaterialCommunityIcons name={iconDescriptor.name} size={30} color={visual.accentColor} />
                 </View>
-                <Text style={styles.categoryLabel}>{category.label}</Text>
+                <Text style={styles.categoryLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>
+                  {category.label}
+                </Text>
               </Pressable>
             );
           })}
         </View>
-      </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActions}>
-        <Pressable style={styles.quickChip} onPress={() => router.push("/(restaurant)/contracts")}>
-          <Ionicons name="document-text-outline" size={14} color={colors.textStrong} />
-          <Text style={styles.quickChipText}>Contratos</Text>
-        </Pressable>
-        <Pressable style={styles.quickChip} onPress={() => router.push("/(restaurant)/recurring/new")}>
-          <Ionicons name="repeat-outline" size={14} color={colors.textStrong} />
-          <Text style={styles.quickChipText}>Pedidos automáticos</Text>
-        </Pressable>
-        <Pressable style={styles.quickChip} onPress={signOut}>
-          <Ionicons name="log-out-outline" size={14} color={colors.textStrong} />
-          <Text style={styles.quickChipText}>Cerrar sesión</Text>
-        </Pressable>
+        <Animated.View style={[styles.demoStrip, sectionMotion]}>
+          <View style={styles.demoStripHeader}>
+            <MaterialCommunityIcons name="play-circle-outline" size={16} color={colors.brandDark} />
+            <Text style={styles.demoStripTitle}>Recorrido demo</Text>
+          </View>
+          <Text style={styles.demoStripText}>Explora mercados, añade producto y simula checkout completo sin login.</Text>
+        </Animated.View>
+      </Animated.View>
+
+      <SectionHeader
+        title="Listo para hoy"
+        subtitle="Operativa inmediata para cocina de servicio"
+        actionLabel="Ver más"
+        onActionPress={() => router.push("/(restaurant)/providers/produce")}
+      />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalCards}>
+        {readyToday.map((provider) => {
+          const fallbackCategory = provider.name.toLowerCase().includes("pesc")
+            ? "seafood"
+            : provider.name.toLowerCase().includes("frut") || provider.name.toLowerCase().includes("feria")
+              ? "produce"
+              : "meat";
+
+          return (
+              <Pressable
+                key={provider.id}
+                style={styles.todayCard}
+                onPressIn={() => warmProviderRoute(provider.id)}
+                onPress={() => router.push(`/(restaurant)/provider/${provider.id}`)}
+              >
+                <AppImage
+                  source={provider.cardImageSource ?? provider.cardImage}
+                  fallbackSource={
+                    provider.cardImageSource ? undefined : [producerCardImage(provider.id, fallbackCategory), categoryVisuals[fallbackCategory].coverImage]
+                  }
+                  style={styles.todayImage}
+                />
+              <View style={styles.todayBody}>
+                <Text style={styles.todayName} numberOfLines={1}>
+                  {provider.name}
+                </Text>
+                <Text style={styles.todayMeta} numberOfLines={1}>
+                  {`${provider.etaMin ?? 20}-${provider.etaMax ?? 32} min`}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Proveedores destacados</Text>
-        <Text style={styles.sectionSubtitle}>Con contrato activo y entrega en zonas céntricas</Text>
-      </View>
+      <SectionHeader title="Mercados top de Sevilla" subtitle="Curado para reposición diaria sin fricción" />
 
       {hasError ? <EmptyState light title="No se pudo cargar la oferta" subtitle="Reintenta en unos segundos." /> : null}
       {isLoading ? <Text style={styles.message}>Cargando proveedores...</Text> : null}
 
-      {featuredProviders.map((provider) => {
+      {topMarkets.map((provider) => {
         const loweredName = provider.name.toLowerCase();
         const fallbackCategory = loweredName.includes("pesc")
           ? "seafood"
@@ -115,25 +182,55 @@ export default function RestaurantHomeScreen() {
             : `${(22 + provider.distanceKm * 8).toFixed(0)}-${(30 + provider.distanceKm * 9).toFixed(0)} min`;
 
         return (
-          <Pressable key={provider.id} style={styles.providerCard} onPress={() => router.push(`/(restaurant)/provider/${provider.id}`)}>
-            <Image source={{ uri: provider.cardImage ?? producerCardImage(provider.id, fallbackCategory) }} style={styles.providerImage} />
+          <Pressable
+            key={provider.id}
+            style={styles.providerCard}
+            onPressIn={() => warmProviderRoute(provider.id)}
+            onPress={() => router.push(`/(restaurant)/provider/${provider.id}`)}
+          >
+            <AppImage
+              source={provider.cardImageSource ?? provider.cardImage}
+              fallbackSource={
+                provider.cardImageSource ? undefined : [producerCardImage(provider.id, fallbackCategory), categoryVisuals[fallbackCategory].coverImage]
+              }
+              style={styles.providerImage}
+              borderRadius={0}
+            />
             <View style={styles.providerBody}>
               <Text style={styles.providerName}>{provider.name}</Text>
-              <Text style={styles.providerMeta}>{`${provider.city} · ${etaText}`}</Text>
               <Text style={styles.providerTagline} numberOfLines={1}>
                 {provider.tagline ?? "Entrega profesional para hostelería"}
               </Text>
-              <View style={styles.providerFooter}>
-                <View style={styles.badge}>
-                  <Ionicons name="star" size={12} color="#f8a500" />
-                  <Text style={styles.badgeText}>{provider.rating.toFixed(1)}</Text>
-                </View>
-                <Text style={styles.fee}>{`Envío ${provider.deliveryFeeEur.toFixed(2)}€`}</Text>
+              <View style={styles.providerStats}>
+                <MetaStatPill icon="thumbs-up-outline" label={`${Math.round(provider.rating * 20)}%`} emphasis="success" />
+                <MetaStatPill icon="time-outline" label={etaText} />
+                <MetaStatPill icon="bicycle-outline" label={`${provider.deliveryFeeEur.toFixed(2)}€`} />
               </View>
             </View>
           </Pressable>
         );
       })}
+
+      <SectionHeader title="Recompra rápida" subtitle="Vuelve a tus mercados frecuentes en un toque" />
+      <View style={styles.reorderRow}>
+        {quickReorder.map((provider) => (
+          <Pressable key={provider.id} style={styles.reorderChip} onPress={() => router.push(`/(restaurant)/provider/${provider.id}`)}>
+            <MaterialCommunityIcons name="refresh" size={14} color={colors.brandDark} />
+            <Text style={styles.reorderChipText} numberOfLines={1}>
+              {provider.name}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {cartCount > 0 ? (
+        <FloatingCartCTA
+          count={cartCount}
+          totalLabel={`${cartSubtotal.toFixed(2)}€`}
+          title={`Pedir ${cartCount} producto${cartCount > 1 ? "s" : ""}`}
+          onPress={() => router.push("/(restaurant)/cart")}
+        />
+      ) : null}
     </AppScreen>
   );
 }
@@ -142,211 +239,212 @@ const styles = StyleSheet.create({
   root: {
     paddingHorizontal: spacing.md
   },
+  content: {
+    gap: 12,
+    paddingBottom: 120
+  },
   topHero: {
     borderRadius: radius.xl,
     backgroundColor: colors.brandYellow,
-    padding: 14,
-    gap: 14,
-    marginBottom: 8
+    padding: 16,
+    gap: 12,
+    marginBottom: 2,
+    ...elevation.level2
   },
   topRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10
   },
-  avatarButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  searchBar: {
+  addressWrap: {
     flex: 1,
-    minHeight: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12
-  },
-  searchText: {
-    color: colors.textSoftDark,
-    fontSize: 14,
-    fontFamily: fonts.bodyStrong
-  },
-  cartButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.75)",
-    alignItems: "center",
-    justifyContent: "center"
-  },
-  cartCount: {
-    position: "absolute",
-    right: -2,
-    top: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 4,
-    backgroundColor: colors.brand,
-    textAlign: "center",
-    textAlignVertical: "center",
-    color: colors.textDark,
-    fontSize: 11,
-    overflow: "hidden",
-    fontFamily: fonts.bodyStrong
-  },
-  addressRow: {
     gap: 2
   },
   address: {
     color: colors.textStrong,
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 32,
+    lineHeight: 36,
     fontFamily: fonts.heading
   },
   addressSub: {
     color: "#3a4350",
     fontSize: 13,
-    fontFamily: fonts.body
+    fontFamily: fonts.bodyStrong
   },
-  categoryBubbleGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 12
-  },
-  categoryBubble: {
-    width: "31%",
-    alignItems: "center",
-    gap: 6
-  },
-  categoryIconWrap: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: "rgba(255,255,255,0.88)",
+  demoBadge: {
+    minHeight: 36,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(255,255,255,0.86)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(22,26,33,0.09)"
+    borderColor: "rgba(14,18,24,0.1)",
+    flexDirection: "row",
+    gap: 6
   },
-  categoryIcon: {
-    fontSize: 30
+  demoBadgeText: {
+    color: colors.textStrong,
+    fontSize: 12,
+    fontFamily: fonts.bodyStrong
+  },
+  searchBar: {
+    minHeight: 46,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.88)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "rgba(14,18,24,0.1)"
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.textStrong,
+    fontSize: 14,
+    fontFamily: fonts.bodyStrong,
+    paddingVertical: 0
+  },
+  categoryBubbleGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10
+  },
+  categoryBubble: {
+    flex: 1,
+    alignItems: "center",
+    gap: 7
+  },
+  categoryIconWrap: {
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(22,26,33,0.18)"
   },
   categoryLabel: {
     color: colors.textStrong,
-    fontSize: 12,
+    fontSize: 13,
     textAlign: "center",
-    lineHeight: 15,
-    fontFamily: fonts.bodyStrong
+    lineHeight: 16,
+    fontFamily: fonts.bodyBold
   },
-  quickActions: {
-    gap: 8,
-    paddingBottom: 6,
-    paddingTop: 2
+  demoStrip: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(29,35,42,0.16)",
+    backgroundColor: "rgba(255,252,245,0.72)",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 6
   },
-  quickChip: {
+  demoStripHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    borderRadius: 20,
+    gap: 6
+  },
+  demoStripTitle: {
+    color: colors.textStrong,
+    fontSize: 13,
+    fontFamily: fonts.bodyStrong
+  },
+  demoStripText: {
+    color: colors.textSoftDark,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: fonts.body
+  },
+  horizontalCards: {
+    gap: 10,
+    paddingRight: 6
+  },
+  todayCard: {
+    width: 160,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    overflow: "hidden",
+    ...elevation.level1
+  },
+  todayImage: {
+    width: "100%",
+    height: 92
+  },
+  todayBody: {
+    padding: 10,
+    gap: 2
+  },
+  todayName: {
+    color: colors.textStrong,
+    fontSize: 14,
+    fontFamily: fonts.bodyStrong
+  },
+  todayMeta: {
+    color: colors.textSoftDark,
+    fontSize: 12,
+    fontFamily: fonts.body
+  },
+  providerCard: {
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    overflow: "hidden",
+    ...elevation.level1
+  },
+  providerImage: {
+    height: 184,
+    width: "100%"
+  },
+  providerBody: {
+    padding: 12,
+    gap: 8
+  },
+  providerName: {
+    color: colors.textStrong,
+    fontSize: 26,
+    lineHeight: 31,
+    fontFamily: fonts.heading
+  },
+  providerTagline: {
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
+  },
+  providerStats: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap"
+  },
+  reorderRow: {
+    gap: 8
+  },
+  reorderChip: {
+    minHeight: 42,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.lightBorder,
     backgroundColor: colors.lightSurface,
     paddingHorizontal: 12,
-    minHeight: 38
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    ...elevation.level1
   },
-  quickChipText: {
+  reorderChipText: {
+    flex: 1,
     color: colors.textStrong,
     fontSize: 13,
     fontFamily: fonts.bodyStrong
-  },
-  sectionHeader: {
-    marginTop: 6,
-    marginBottom: 2
-  },
-  sectionTitle: {
-    color: colors.textStrong,
-    fontSize: 25,
-    lineHeight: 30,
-    fontFamily: fonts.heading
-  },
-  sectionSubtitle: {
-    color: colors.textSoftDark,
-    fontSize: 13,
-    marginTop: 3,
-    fontFamily: fonts.body
   },
   message: {
     color: colors.textSoftDark,
-    fontSize: 14,
-    marginTop: 8,
-    fontFamily: fonts.body
-  },
-  providerCard: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.lightBorder,
-    overflow: "hidden",
-    backgroundColor: colors.lightSurface,
-    marginTop: 10
-  },
-  providerImage: {
-    width: "100%",
-    height: 138,
-    backgroundColor: "#d8d8d8"
-  },
-  providerBody: {
-    padding: 12,
-    gap: 4
-  },
-  providerName: {
-    color: colors.textStrong,
-    fontSize: 22,
-    lineHeight: 27,
-    fontFamily: fonts.heading
-  },
-  providerMeta: {
-    color: colors.textSoftDark,
     fontSize: 13,
     fontFamily: fonts.body
-  },
-  providerTagline: {
-    color: "#4f5b68",
-    fontSize: 12,
-    fontFamily: fonts.body
-  },
-  providerFooter: {
-    marginTop: 4,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center"
-  },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.lightBorder,
-    backgroundColor: "#fff8e8",
-    paddingHorizontal: 9,
-    paddingVertical: 4
-  },
-  badgeText: {
-    color: colors.textStrong,
-    fontSize: 12,
-    fontFamily: fonts.bodyStrong
-  },
-  fee: {
-    color: colors.textStrong,
-    fontSize: 13,
-    fontFamily: fonts.bodyStrong
   }
 });

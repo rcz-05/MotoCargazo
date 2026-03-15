@@ -18,7 +18,7 @@ export function EmptyState({ title, subtitle, light = false }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 36,
+    paddingVertical: 34,
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.textPrimary,
-    fontSize: 21,
+    fontSize: 24,
     fontFamily: fonts.heading,
     textAlign: "center"
   },

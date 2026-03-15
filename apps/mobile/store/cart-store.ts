@@ -1,12 +1,15 @@
 import { create } from "zustand";
+import type { AppImageSource } from "../lib/imageSources";
 
 type CartItem = {
   productId: string;
   producerId: string;
   name: string;
+  category: "meat" | "seafood" | "produce";
   unit: "kg" | "piece";
   unitPriceEur: number;
   imageUrl: string | null;
+  imageSource?: AppImageSource | null;
   quantity: number;
 };
 

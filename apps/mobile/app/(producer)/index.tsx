@@ -1,14 +1,14 @@
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchProducerOrders } from "../../lib/api";
 import { formatDateTime, formatEuro } from "../../lib/dates";
 import { orderStatusLabel } from "../../lib/showcase";
 import { useSession } from "../../lib/session";
-import { colors, radius, spacing } from "../../lib/theme";
+import { colors, elevation, fonts, radius, spacing } from "../../lib/theme";
 
 export default function ProducerOrdersScreen() {
   const { roleSession, signOut } = useSession();
@@ -20,7 +20,7 @@ export default function ProducerOrdersScreen() {
   });
 
   return (
-    <AppScreen scroll={false} style={{ paddingHorizontal: spacing.md }}>
+    <AppScreen scroll={false} dark={false} backgroundColor={colors.bgLight} style={{ paddingHorizontal: spacing.md }}>
       <FlatList
         data={data ?? []}
         keyExtractor={(item) => item.id}
@@ -32,15 +32,16 @@ export default function ProducerOrdersScreen() {
             </View>
             <View style={styles.actions}>
               <Pressable onPress={() => router.push("/(producer)/contracts")} style={styles.linkButton}>
+                <MaterialCommunityIcons name="file-document-outline" size={14} color={colors.brandDark} />
                 <Text style={styles.link}>Contratos</Text>
               </Pressable>
               <Pressable onPress={signOut} style={styles.linkButton}>
-                <Ionicons name="log-out-outline" size={14} color={colors.textSecondary} />
+                <MaterialCommunityIcons name="logout" size={14} color={colors.brandDark} />
               </Pressable>
             </View>
           </View>
         }
-        ListEmptyComponent={isLoading ? <Text style={styles.meta}>Cargando...</Text> : <EmptyState title="No hay pedidos hoy" />}
+        ListEmptyComponent={isLoading ? <Text style={styles.meta}>Cargando...</Text> : <EmptyState light title="No hay pedidos hoy" />}
         contentContainerStyle={{ gap: 10, paddingBottom: 20 }}
         renderItem={({ item }) => (
           <Pressable style={styles.card} onPress={() => router.push(`/(producer)/order/${item.id}`)}>
@@ -60,16 +61,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8
+    marginBottom: 8,
+    gap: 8
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "800"
+    color: colors.textStrong,
+    fontSize: 32,
+    lineHeight: 37,
+    fontFamily: fonts.heading
   },
   subtitle: {
-    color: colors.textSecondary,
-    fontSize: 13
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
   },
   actions: {
     flexDirection: "row",
@@ -78,38 +82,45 @@ const styles = StyleSheet.create({
   linkButton: {
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: "rgba(17, 34, 61, 0.75)",
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
     paddingHorizontal: 10,
     minHeight: 32,
     justifyContent: "center",
-    alignItems: "center"
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 5,
+    ...elevation.level1
   },
   link: {
-    color: colors.brandSoft,
-    fontWeight: "700",
-    fontSize: 12
+    color: colors.brandDark,
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.2,
+    fontFamily: fonts.bodyStrong
   },
   card: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.bgCard,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
     padding: 12,
-    gap: 4
+    gap: 4,
+    ...elevation.level1
   },
   cardTitle: {
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontWeight: "700"
+    color: colors.textStrong,
+    fontSize: 17,
+    fontFamily: fonts.bodyStrong
   },
   meta: {
-    color: colors.textSecondary,
-    fontSize: 13
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
   },
   total: {
-    color: colors.brandSoft,
+    color: colors.brandDark,
     fontSize: 13,
-    fontWeight: "700"
+    fontFamily: fonts.bodyStrong
   }
 });

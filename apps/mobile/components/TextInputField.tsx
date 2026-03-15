@@ -30,11 +30,11 @@ export function TextInputField({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={light ? colors.textSoftDark : colors.textSecondary}
+        placeholderTextColor={light ? colors.textTertiary : colors.textSecondary}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         autoCapitalize="none"
-        selectionColor={colors.brand}
+        selectionColor={colors.brandDark}
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -47,7 +47,9 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: 11,
+    letterSpacing: 0.35,
+    textTransform: "uppercase",
     fontFamily: fonts.bodyStrong
   },
   labelLight: {
@@ -56,9 +58,9 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderRadius: radius.lg,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 17,
+    paddingHorizontal: 15,
+    paddingVertical: 13,
+    fontSize: 15,
     fontFamily: fonts.body
   },
   inputDark: {
@@ -67,15 +69,16 @@ const styles = StyleSheet.create({
     color: colors.textPrimary
   },
   inputLight: {
-    backgroundColor: colors.lightSurfaceSoft,
+    backgroundColor: colors.lightSurface,
     borderColor: colors.lightBorder,
     color: colors.textStrong
   },
   inputError: {
-    borderColor: colors.danger
+    borderColor: colors.danger,
+    backgroundColor: "#FFF3F1"
   },
   error: {
-    color: "#ff6f6f",
+    color: colors.danger,
     fontSize: 12,
     lineHeight: 16,
     fontFamily: fonts.body

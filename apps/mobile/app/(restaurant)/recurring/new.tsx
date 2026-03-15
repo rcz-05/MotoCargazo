@@ -1,16 +1,18 @@
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AppScreen } from "../../../components/AppScreen";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { TextInputField } from "../../../components/TextInputField";
 import { createRecurringPlan } from "../../../lib/api";
+import { isDemoApp } from "../../../lib/app-mode";
 import { useSession } from "../../../lib/session";
 import { supabase } from "../../../lib/supabase";
-import { colors, radius } from "../../../lib/theme";
+import { colors, elevation, fonts, radius } from "../../../lib/theme";
 
 const schema = z.object({
   contractId: z.string().uuid(),
@@ -24,6 +26,10 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function NewRecurringPlanScreen() {
+  if (isDemoApp) {
+    return <Redirect href="/(restaurant)" />;
+  }
+
   const { roleSession } = useSession();
 
   const { data: contracts } = useQuery({
@@ -67,10 +73,10 @@ export default function NewRecurringPlanScreen() {
   const selectedContract = contracts?.find((contract) => contract.id === watch("contractId"));
 
   return (
-    <AppScreen>
+    <AppScreen dark={false} backgroundColor={colors.bgLight}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.back}>←</Text>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <MaterialCommunityIcons name="chevron-left" size={18} color={colors.textStrong} />
         </Pressable>
         <Text style={styles.title}>Plan recurrente</Text>
       </View>
@@ -95,7 +101,7 @@ export default function NewRecurringPlanScreen() {
         control={control}
         name="name"
         render={({ field: { value, onChange } }) => (
-          <TextInputField label="Nombre del plan" value={value} onChangeText={onChange} error={errors.name?.message} />
+          <TextInputField light label="Nombre del plan" value={value} onChangeText={onChange} error={errors.name?.message} />
         )}
       />
 
@@ -103,7 +109,14 @@ export default function NewRecurringPlanScreen() {
         control={control}
         name="cronExpression"
         render={({ field: { value, onChange } }) => (
-          <TextInputField label="Cron" value={value} onChangeText={onChange} placeholder="0 6 * * 1" error={errors.cronExpression?.message} />
+          <TextInputField
+            light
+            label="Cron"
+            value={value}
+            onChangeText={onChange}
+            placeholder="0 6 * * 1"
+            error={errors.cronExpression?.message}
+          />
         )}
       />
 
@@ -111,7 +124,7 @@ export default function NewRecurringPlanScreen() {
         control={control}
         name="productId"
         render={({ field: { value, onChange } }) => (
-          <TextInputField label="Product ID" value={value} onChangeText={onChange} error={errors.productId?.message} />
+          <TextInputField light label="Product ID" value={value} onChangeText={onChange} error={errors.productId?.message} />
         )}
       />
 
@@ -119,7 +132,14 @@ export default function NewRecurringPlanScreen() {
         control={control}
         name="quantity"
         render={({ field: { value, onChange } }) => (
-          <TextInputField label="Cantidad" value={String(value)} onChangeText={onChange} keyboardType="numeric" error={errors.quantity?.message} />
+          <TextInputField
+            light
+            label="Cantidad"
+            value={String(value)}
+            onChangeText={onChange}
+            keyboardType="numeric"
+            error={errors.quantity?.message}
+          />
         )}
       />
 
@@ -166,19 +186,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10
   },
-  back: {
-    color: colors.brand,
-    fontSize: 26,
-    fontWeight: "700"
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    alignItems: "center",
+    justifyContent: "center"
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: "800"
+    color: colors.textStrong,
+    fontSize: 30,
+    lineHeight: 35,
+    fontFamily: fonts.heading
   },
   subtitle: {
-    color: colors.textSecondary,
-    fontSize: 13
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
   },
   contractList: {
     gap: 8
@@ -186,21 +213,23 @@ const styles = StyleSheet.create({
   contractOption: {
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.bgDarkSoft,
-    padding: 10
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
+    padding: 10,
+    ...elevation.level1
   },
   contractOptionActive: {
-    borderColor: colors.brand,
-    backgroundColor: "rgba(77,174,87,0.15)"
+    borderColor: colors.brandDark,
+    backgroundColor: colors.brandSoft
   },
   contractTitle: {
-    color: colors.textPrimary,
-    fontWeight: "700"
+    color: colors.textStrong,
+    fontFamily: fonts.bodyStrong
   },
   contractMeta: {
-    color: colors.textSecondary,
-    fontSize: 12
+    color: colors.textSoftDark,
+    fontSize: 12,
+    fontFamily: fonts.body
   },
   toggleRow: {
     flexDirection: "row",
@@ -208,28 +237,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   toggleLabel: {
-    color: colors.textPrimary,
-    fontWeight: "600"
+    color: colors.textStrong,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    fontSize: 12,
+    fontFamily: fonts.bodyStrong
   },
   toggle: {
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.lightBorder,
     minWidth: 56,
     minHeight: 34,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    backgroundColor: colors.lightSurface
   },
   toggleActive: {
-    borderColor: colors.brand,
-    backgroundColor: "rgba(77,174,87,0.2)"
+    borderColor: colors.brandDark,
+    backgroundColor: colors.brandSoft
   },
   toggleText: {
-    color: colors.textPrimary,
-    fontWeight: "700"
+    color: colors.textStrong,
+    fontFamily: fonts.bodyStrong
   },
   error: {
     color: colors.danger,
-    fontSize: 12
+    fontSize: 12,
+    fontFamily: fonts.body
   }
 });

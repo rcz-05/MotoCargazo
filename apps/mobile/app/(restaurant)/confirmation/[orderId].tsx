@@ -1,19 +1,19 @@
 import { useEffect, useMemo } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../../components/AppScreen";
 import { PrimaryButton } from "../../../components/PrimaryButton";
+import { AppImage } from "../../../components/AppImage";
 import { fetchOrderById } from "../../../lib/api";
+import { isDemoApp } from "../../../lib/app-mode";
 import { formatDateTime, formatEuro } from "../../../lib/dates";
+import { categoryCover, sevilleMap } from "../../../lib/demoMedia";
 import { getDemoProviderById } from "../../../lib/demoCatalog";
 import { orderStatusLabel } from "../../../lib/showcase";
 import { colors, fonts, radius, spacing } from "../../../lib/theme";
 import { useDemoOrderStore } from "../../../store/demo-order-store";
-
-const mapImage =
-  "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80";
 
 const statusOrder = ["submitted", "accepted_by_producer", "preparing", "out_for_delivery", "delivered"] as const;
 const statusDelayMs: Record<(typeof statusOrder)[number], number> = {
@@ -51,7 +51,7 @@ export default function OrderConfirmationScreen() {
 
   const { data: remoteOrder, isLoading } = useQuery({
     queryKey: ["order", normalizedOrderId],
-    enabled: Boolean(normalizedOrderId) && !isDemoOrder,
+    enabled: Boolean(normalizedOrderId) && !isDemoOrder && !isDemoApp,
     queryFn: () => fetchOrderById(normalizedOrderId)
   });
 
@@ -85,16 +85,21 @@ export default function OrderConfirmationScreen() {
   return (
     <AppScreen dark={false} backgroundColor={colors.bgLight} style={styles.root}>
       <View style={styles.mapWrap}>
-        <Image source={{ uri: mapImage }} style={styles.mapImage} />
+        <AppImage
+          source={sevilleMap}
+          fallbackSource={[categoryCover.produce, categoryCover.meat]}
+          style={styles.mapImage}
+          borderRadius={0}
+        />
         <View style={styles.mapOverlay} />
 
         <Pressable style={styles.closeButton} onPress={() => router.replace("/(restaurant)")}>
-          <Ionicons name="close" size={20} color={colors.white} />
+          <MaterialCommunityIcons name="close" size={20} color={colors.white} />
         </Pressable>
 
         <View style={styles.confirmationBadge}>
-          <Ionicons
-            name={data?.status === "delivered" ? "checkmark-circle" : "bicycle-outline"}
+          <MaterialCommunityIcons
+            name={data?.status === "delivered" ? "check-circle" : "bike"}
             size={28}
             color={data?.status === "delivered" ? colors.brandDark : "#0f8f6e"}
           />
@@ -131,7 +136,11 @@ export default function OrderConfirmationScreen() {
                 return (
                   <View key={step.key} style={styles.timelineRow}>
                     <View style={[styles.timelineIcon, reached && styles.timelineIconReached, active && styles.timelineIconActive]}>
-                      <Ionicons name={reached ? "checkmark" : "ellipse-outline"} size={13} color={reached ? colors.white : "#7a838d"} />
+                      <MaterialCommunityIcons
+                        name={reached ? "check" : "checkbox-blank-circle-outline"}
+                        size={13}
+                        color={reached ? colors.white : "#7a838d"}
+                      />
                     </View>
                     <View style={styles.timelineTextWrap}>
                       <Text style={[styles.timelineLabel, reached && styles.timelineLabelReached]}>{step.label}</Text>

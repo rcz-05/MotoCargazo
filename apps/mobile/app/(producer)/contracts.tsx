@@ -1,13 +1,13 @@
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { AppScreen } from "../../components/AppScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { fetchProducerContracts } from "../../lib/api";
 import { contractStatusLabel } from "../../lib/showcase";
 import { useSession } from "../../lib/session";
-import { colors, radius, spacing } from "../../lib/theme";
+import { colors, elevation, fonts, radius, spacing } from "../../lib/theme";
 
 export default function ProducerContractsScreen() {
   const { roleSession } = useSession();
@@ -19,14 +19,14 @@ export default function ProducerContractsScreen() {
   });
 
   return (
-    <AppScreen scroll={false} style={{ paddingHorizontal: spacing.md }}>
+    <AppScreen scroll={false} dark={false} backgroundColor={colors.bgLight} style={{ paddingHorizontal: spacing.md }}>
       <FlatList
         data={data ?? []}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+              <MaterialCommunityIcons name="chevron-left" size={20} color={colors.textStrong} />
             </Pressable>
             <View>
               <Text style={styles.title}>Contratos proveedor</Text>
@@ -34,7 +34,7 @@ export default function ProducerContractsScreen() {
             </View>
           </View>
         }
-        ListEmptyComponent={isLoading ? <Text style={styles.meta}>Cargando...</Text> : <EmptyState title="Sin contratos" />}
+        ListEmptyComponent={isLoading ? <Text style={styles.meta}>Cargando...</Text> : <EmptyState light title="Sin contratos" />}
         contentContainerStyle={{ gap: 10, paddingBottom: 20 }}
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -60,35 +60,39 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: "rgba(17, 34, 61, 0.75)",
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
     alignItems: "center",
     justifyContent: "center"
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: "800"
+    color: colors.textStrong,
+    fontSize: 30,
+    lineHeight: 35,
+    fontFamily: fonts.heading
   },
   subtitle: {
-    color: colors.textSecondary,
-    fontSize: 12
+    color: colors.textSoftDark,
+    fontSize: 12,
+    fontFamily: fonts.body
   },
   card: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.borderSoft,
-    backgroundColor: colors.bgCard,
+    borderColor: colors.lightBorder,
+    backgroundColor: colors.lightSurface,
     padding: 10,
-    gap: 4
+    gap: 4,
+    ...elevation.level1
   },
   cardTitle: {
-    color: colors.textPrimary,
+    color: colors.textStrong,
     fontSize: 16,
-    fontWeight: "700"
+    fontFamily: fonts.bodyStrong
   },
   meta: {
-    color: colors.textSecondary,
-    fontSize: 13
+    color: colors.textSoftDark,
+    fontSize: 13,
+    fontFamily: fonts.body
   }
 });
