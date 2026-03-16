@@ -269,14 +269,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: colors.actionPrimaryBorder,
-    backgroundColor: colors.actionPrimary,
+    backgroundColor: colors.floatingCartPrimary,
     justifyContent: "center",
     alignItems: "center"
   },
   demoButtonText: {
-    color: "#f8f7f1",
+    color: "#1A1A18",
     fontSize: 13,
     fontFamily: fonts.bodyStrong
   },

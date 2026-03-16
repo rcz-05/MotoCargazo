@@ -93,7 +93,7 @@ export default function LaunchScreen() {
 
         <Pressable onPress={handleContinue} style={styles.cta}>
           <Text style={styles.ctaText}>{isDemoApp ? "Abrir demo restaurante" : "Entrar al panel"}</Text>
-          <MaterialCommunityIcons name="arrow-right" size={18} color="#F8F4EC" />
+          <MaterialCommunityIcons name="arrow-right" size={18} color="#1A1A18" />
         </Pressable>
       </Animated.View>
     </LinearGradient>
@@ -216,12 +216,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.heading
   },
   cta: {
-    minHeight: 54,
+    minHeight: 58,
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.actionPrimaryBorder,
-    backgroundColor: colors.actionPrimary,
-    paddingHorizontal: 18,
+    backgroundColor: colors.floatingCartPrimary,
+    paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -229,8 +227,8 @@ const styles = StyleSheet.create({
     ...elevation.level1
   },
   ctaText: {
-    color: "#F8F4EC",
-    fontSize: 16,
-    fontFamily: fonts.bodyStrong
+    color: "#1A1A18",
+    fontSize: 18,
+    fontFamily: fonts.bodyBold
   }
 });

@@ -54,21 +54,21 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 60,
+    minHeight: 58,
     borderRadius: radius.pill,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     ...elevation.level1
   },
   primary: {
-    backgroundColor: colors.actionPrimary
+    backgroundColor: colors.floatingCartPrimary
   },
   primaryPressed: {
-    backgroundColor: colors.actionPrimaryPressed
+    backgroundColor: colors.floatingCartPressed
   },
   compact: {
-    minHeight: 52
+    minHeight: 50
   },
   secondary: {
     backgroundColor: colors.actionSecondary,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     borderWidth: 2
   },
   text: {
-    fontSize: 19,
+    fontSize: 18,
     fontFamily: fonts.bodyBold,
     letterSpacing: 0.1
   },

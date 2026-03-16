@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: colors.actionPrimary,
+    backgroundColor: colors.floatingCartPrimary,
     alignItems: "center",
     justifyContent: "center",
     ...elevation.level1
