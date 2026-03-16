@@ -25,6 +25,15 @@ const categories = [
   { code: "produce", label: "Frutas y verduras" }
 ] as const;
 
+function formatRestaurantHeroTitle(name: string | null | undefined) {
+  const normalizedName = name?.trim();
+  if (!normalizedName) return "Tu Restaurante";
+  if (normalizedName.toLowerCase() === "restaurante demo sevilla") {
+    return "Restaurante\nDemo\nSevilla";
+  }
+  return normalizedName;
+}
+
 export default function RestaurantHomeScreen() {
   const { roleSession } = useSession();
   const cartItems = useCartStore((state) => state.items);
@@ -34,6 +43,7 @@ export default function RestaurantHomeScreen() {
   const reducedMotion = useReducedMotionPreference();
   const heroMotion = useEntranceAnimation({ delay: motionStagger.screenEnter, reducedMotion });
   const sectionMotion = useEntranceAnimation({ delay: motionStagger.screenEnter * 2, reducedMotion });
+  const heroTitle = useMemo(() => formatRestaurantHeroTitle(roleSession.organizationName), [roleSession.organizationName]);
 
   const categoryQueries = useQueries({
     queries: categories.map((category) => ({
@@ -63,14 +73,14 @@ export default function RestaurantHomeScreen() {
   return (
     <AppScreen dark={false} backgroundColor={colors.bgLight} style={styles.root} contentContainerStyle={styles.content}>
       <Animated.View style={[styles.topHero, heroMotion]}>
-        <View style={styles.topRow}>
+        <View style={styles.topHeader}>
           <View style={styles.addressWrap}>
-            <Text style={styles.address}>{roleSession.organizationName ?? "Tu Restaurante"}</Text>
+            <Text style={styles.address}>{heroTitle}</Text>
+            <View style={styles.demoBadge}>
+              <MaterialCommunityIcons name="silverware-fork-knife" size={15} color={colors.brandDark} />
+              <Text style={styles.demoBadgeText}>Restaurante demo</Text>
+            </View>
             <Text style={styles.addressSub}>{roleSession.city ?? "Sevilla"} · demo pública</Text>
-          </View>
-          <View style={styles.demoBadge}>
-            <MaterialCommunityIcons name="silverware-fork-knife" size={15} color={colors.brandDark} />
-            <Text style={styles.demoBadgeText}>Restaurante demo</Text>
           </View>
         </View>
 
@@ -251,14 +261,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     ...elevation.level2
   },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  topHeader: {
     gap: 10
   },
   addressWrap: {
-    flex: 1,
-    gap: 2
+    gap: 10
   },
   address: {
     color: colors.textStrong,
@@ -272,6 +279,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyStrong
   },
   demoBadge: {
+    alignSelf: "flex-start",
     minHeight: 36,
     borderRadius: radius.pill,
     paddingHorizontal: 12,

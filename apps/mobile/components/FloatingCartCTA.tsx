@@ -38,10 +38,12 @@ export function FloatingCartCTA({ count, totalLabel, title = "Ver carrito", onPr
           <View style={styles.countPill}>
             <Text style={styles.countText}>{count}</Text>
           </View>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
           <View style={styles.trailing}>
             <Text style={styles.total}>{totalLabel}</Text>
-            <MaterialCommunityIcons name="arrow-right" size={18} color="#1A1A18" />
+            <MaterialCommunityIcons name="arrow-right" size={17} color="#1A1A18" />
           </View>
         </View>
       </Pressable>
@@ -52,55 +54,55 @@ export function FloatingCartCTA({ count, totalLabel, title = "Ver carrito", onPr
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    left: spacing.md,
-    right: spacing.md,
-    bottom: spacing.md
+    left: spacing.md + 6,
+    right: spacing.md + 6,
+    bottom: spacing.sm + 2
   },
   cta: {
-    minHeight: 66,
+    minHeight: 58,
     borderRadius: radius.pill,
-    backgroundColor: colors.actionPrimary,
+    backgroundColor: colors.floatingCartPrimary,
     overflow: "hidden",
     ...elevation.floating
   },
   ctaPressedColor: {
-    backgroundColor: colors.actionPrimaryPressed
+    backgroundColor: colors.floatingCartPressed
   },
   row: {
-    minHeight: 66,
-    paddingHorizontal: 14,
+    minHeight: 58,
+    paddingHorizontal: 12,
     alignItems: "center",
     flexDirection: "row",
-    gap: 9
+    gap: 8
   },
   countPill: {
-    minWidth: 38,
-    height: 38,
+    minWidth: 34,
+    height: 34,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(255, 255, 255, 0.30)",
+    backgroundColor: colors.floatingCartHighlight,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 8
+    paddingHorizontal: 7
   },
   countText: {
     color: "#1A1A18",
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: fonts.bodyBold
   },
   title: {
     flex: 1,
     color: "#1A1A18",
-    fontSize: 21,
+    fontSize: 18,
     fontFamily: fonts.bodyBold
   },
   trailing: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6
+    gap: 5
   },
   total: {
     color: "#1A1A18",
-    fontSize: 23,
+    fontSize: 20,
     fontFamily: fonts.bodyBold
   },
   ctaPressed: {
